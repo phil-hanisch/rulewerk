@@ -23,7 +23,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>${project.groupId}</groupId>
-			<artifactId>vlog4j-core</artifactId>
+			<artifactId>vlog4j-vlog</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>

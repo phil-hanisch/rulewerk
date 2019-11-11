@@ -33,12 +33,12 @@ import org.semanticweb.vlog4j.core.model.implementation.DataSourceDeclarationImp
 import org.semanticweb.vlog4j.core.model.implementation.Expressions;
 import org.semanticweb.vlog4j.core.reasoner.KnowledgeBase;
 import org.semanticweb.vlog4j.core.reasoner.Reasoner;
-import org.semanticweb.vlog4j.core.reasoner.implementation.RdfFileDataSource;
-import org.semanticweb.vlog4j.core.reasoner.implementation.SparqlQueryResultDataSource;
-import org.semanticweb.vlog4j.core.reasoner.implementation.VLogReasoner;
 import org.semanticweb.vlog4j.examples.DoidExample;
 import org.semanticweb.vlog4j.examples.ExamplesUtils;
 import org.semanticweb.vlog4j.graal.GraalToVLog4JModelConverter;
+import org.semanticweb.vlog4j.vlog.RdfFileDataSource;
+import org.semanticweb.vlog4j.vlog.SparqlQueryResultDataSource;
+import org.semanticweb.vlog4j.vlog.reasoner.VLogReasoner;
 
 import fr.lirmm.graphik.graal.io.dlp.DlgpParser;
 

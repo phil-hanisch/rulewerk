@@ -28,6 +28,7 @@ import org.semanticweb.vlog4j.core.reasoner.LogLevel;
 import org.semanticweb.vlog4j.core.reasoner.Reasoner;
 import org.semanticweb.vlog4j.parser.ParsingException;
 import org.semanticweb.vlog4j.parser.RuleParser;
+import org.semanticweb.vlog4j.vlog.reasoner.VLogReasoner;
 
 /**
  * This class exemplifies setting a log file and log level for VLog reasoner
@@ -66,8 +67,8 @@ public class ConfigureReasonerLogging {
 
 	public static void main(final String[] args) throws IOException, ParsingException {
 
-		try (final Reasoner reasoner = Reasoner.getInstance()) {
-			final KnowledgeBase kb = reasoner.getKnowledgeBase();
+		final KnowledgeBase kb = new KnowledgeBase();
+		try (Reasoner reasoner = new VLogReasoner(kb)) {
 			/* exists z. B(?y, !z) :- A(?x, ?y) . */
 			kb.addStatements(RuleParser.parseRule("B(?Y, !Z) :- A(?X, ?Y) ."));
 			/* B(?y, ?x), A(?y, ?x) :- B(?x, ?y) . */

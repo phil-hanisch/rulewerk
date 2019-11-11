@@ -1,5 +1,7 @@
 package org.semanticweb.vlog4j.rdf;
 
+import static org.junit.Assert.assertEquals;
+
 /*-
  * #%L
  * VLog4j RDF Support
@@ -21,7 +23,6 @@ package org.semanticweb.vlog4j.rdf;
  */
 
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,7 +45,7 @@ import org.semanticweb.vlog4j.core.model.implementation.Expressions;
 import org.semanticweb.vlog4j.core.reasoner.KnowledgeBase;
 import org.semanticweb.vlog4j.core.reasoner.QueryResultIterator;
 import org.semanticweb.vlog4j.core.reasoner.Reasoner;
-import org.semanticweb.vlog4j.core.reasoner.implementation.VLogReasoner;
+import org.semanticweb.vlog4j.vlog.reasoner.VLogReasoner;
 
 public class TestReasonOverRdfFacts {
 

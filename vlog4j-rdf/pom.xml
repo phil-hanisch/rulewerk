@@ -42,6 +42,13 @@
 			<version>${openrdf.sesame.version}</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<!-- VLog reasoner dependency for integration tests of reasoning over RDF data. -->
+			<groupId>${project.groupId}</groupId>
+			<artifactId>vlog4j-vlog</artifactId>
+			<version>${project.version}</version>
+			<scope>test</scope>
+		</dependency>
 		<!-- Useful Collection utilities, like intersection -->
 		<dependency>
 		    <groupId>org.apache.commons</groupId>

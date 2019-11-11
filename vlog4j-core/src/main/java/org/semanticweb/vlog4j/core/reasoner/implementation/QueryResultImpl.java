@@ -30,11 +30,11 @@ import org.semanticweb.vlog4j.core.model.api.Term;
  * @author Irina Dragoste
  *
  */
-final class QueryResultImpl implements QueryResult {
+public final class QueryResultImpl implements QueryResult {
 
 	private final List<Term> terms;
 
-	QueryResultImpl(List<Term> terms) {
+	public QueryResultImpl(List<Term> terms) {
 		this.terms = terms;
 	}
 
@@ -47,7 +47,7 @@ final class QueryResultImpl implements QueryResult {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((terms == null) ? 0 : terms.hashCode());
+		result = prime * result + (this.terms == null ? 0 : this.terms.hashCode());
 		return result;
 	}
 

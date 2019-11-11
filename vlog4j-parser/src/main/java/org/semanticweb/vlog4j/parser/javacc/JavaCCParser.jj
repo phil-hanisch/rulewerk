@@ -33,9 +33,9 @@ import org.semanticweb.vlog4j.core.model.api.Fact;
 import org.semanticweb.vlog4j.core.model.api.Term;
 import org.semanticweb.vlog4j.core.model.api.Constant;
 import org.semanticweb.vlog4j.core.model.api.DataSource;
-import org.semanticweb.vlog4j.core.reasoner.implementation.CsvFileDataSource;
-import org.semanticweb.vlog4j.core.reasoner.implementation.RdfFileDataSource;
-import org.semanticweb.vlog4j.core.reasoner.implementation.SparqlQueryResultDataSource;
+import org.semanticweb.vlog4j.vlog.CsvFileDataSource;
+import org.semanticweb.vlog4j.vlog.RdfFileDataSource;
+import org.semanticweb.vlog4j.vlog.SparqlQueryResultDataSource;
 
 import org.semanticweb.vlog4j.core.model.implementation.Expressions;
 

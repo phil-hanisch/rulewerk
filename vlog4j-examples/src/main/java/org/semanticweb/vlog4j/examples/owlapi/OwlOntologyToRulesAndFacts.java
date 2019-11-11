@@ -38,14 +38,14 @@ import org.semanticweb.vlog4j.core.model.api.Variable;
 import org.semanticweb.vlog4j.core.model.implementation.Expressions;
 import org.semanticweb.vlog4j.core.reasoner.KnowledgeBase;
 import org.semanticweb.vlog4j.core.reasoner.QueryResultIterator;
-import org.semanticweb.vlog4j.core.reasoner.implementation.VLogReasoner;
 import org.semanticweb.vlog4j.examples.ExamplesUtils;
 import org.semanticweb.vlog4j.owlapi.OwlToRulesConverter;
+import org.semanticweb.vlog4j.vlog.reasoner.VLogReasoner;
 
 /**
  * This example shows how <b>vlog4j-owlapi</b> library (class
  * {@link OwlToRulesConverter}) can be used to transform an OWL ontology into
- * <b>vlog4j-core</b> {@link Rule}s and {@link Atom}s.
+ * <b>vlog4j-core</b> {@link Rule}s and {@link Fact}s.
  * 
  * @author Irina Dragoste
  *

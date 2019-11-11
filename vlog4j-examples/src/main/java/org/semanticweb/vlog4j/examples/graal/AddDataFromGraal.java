@@ -27,10 +27,10 @@ import java.util.List;
 import org.semanticweb.vlog4j.core.model.api.Rule;
 import org.semanticweb.vlog4j.core.reasoner.KnowledgeBase;
 import org.semanticweb.vlog4j.core.reasoner.Reasoner;
-import org.semanticweb.vlog4j.core.reasoner.implementation.VLogReasoner;
 import org.semanticweb.vlog4j.examples.ExamplesUtils;
 import org.semanticweb.vlog4j.graal.GraalConjunctiveQueryToRule;
 import org.semanticweb.vlog4j.graal.GraalToVLog4JModelConverter;
+import org.semanticweb.vlog4j.vlog.reasoner.VLogReasoner;
 
 import fr.lirmm.graphik.graal.api.core.ConjunctiveQuery;
 import fr.lirmm.graphik.graal.io.dlp.DlgpParser;

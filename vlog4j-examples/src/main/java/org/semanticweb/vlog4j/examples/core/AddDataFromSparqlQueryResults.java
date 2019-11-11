@@ -38,8 +38,9 @@ import org.semanticweb.vlog4j.core.model.implementation.Expressions;
 import org.semanticweb.vlog4j.core.reasoner.KnowledgeBase;
 import org.semanticweb.vlog4j.core.reasoner.QueryResultIterator;
 import org.semanticweb.vlog4j.core.reasoner.Reasoner;
-import org.semanticweb.vlog4j.core.reasoner.implementation.SparqlQueryResultDataSource;
 import org.semanticweb.vlog4j.examples.ExamplesUtils;
+import org.semanticweb.vlog4j.vlog.SparqlQueryResultDataSource;
+import org.semanticweb.vlog4j.vlog.reasoner.VLogReasoner;
 
 /**
  * This is a simple example of adding data from the result of a SPARQL query on
@@ -120,14 +121,12 @@ public class AddDataFromSparqlQueryResults {
 		 */
 		final Predicate queryPredicate = Expressions.makePredicate("publicationParents", 3);
 
-		try (Reasoner reasoner = Reasoner.getInstance()) {
-
-			final KnowledgeBase kb = reasoner.getKnowledgeBase();
+		final KnowledgeBase kb = new KnowledgeBase();
+		try (Reasoner reasoner = new VLogReasoner(kb)) {
 			/*
 			 * The SPARQL query results will be added to the reasoner knowledge base, as
 			 * facts associated to the predicate publicationParents.
 			 */
-
 			kb.addStatement(new DataSourceDeclarationImpl(queryPredicate, sparqlQueryResultDataSource));
 			reasoner.reason();
 

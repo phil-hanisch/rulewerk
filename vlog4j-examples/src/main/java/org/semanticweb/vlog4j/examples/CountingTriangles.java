@@ -25,9 +25,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 
 import org.semanticweb.vlog4j.core.reasoner.KnowledgeBase;
-import org.semanticweb.vlog4j.core.reasoner.implementation.VLogReasoner;
 import org.semanticweb.vlog4j.parser.ParsingException;
 import org.semanticweb.vlog4j.parser.RuleParser;
+import org.semanticweb.vlog4j.vlog.reasoner.VLogReasoner;
 
 /**
  * In this example we count the number of triangles in the reflexive

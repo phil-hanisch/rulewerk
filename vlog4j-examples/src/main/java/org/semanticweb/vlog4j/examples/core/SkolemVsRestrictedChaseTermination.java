@@ -25,10 +25,10 @@ import java.io.IOException;
 import org.semanticweb.vlog4j.core.model.api.PositiveLiteral;
 import org.semanticweb.vlog4j.core.reasoner.Algorithm;
 import org.semanticweb.vlog4j.core.reasoner.KnowledgeBase;
-import org.semanticweb.vlog4j.core.reasoner.implementation.VLogReasoner;
 import org.semanticweb.vlog4j.examples.ExamplesUtils;
 import org.semanticweb.vlog4j.parser.ParsingException;
 import org.semanticweb.vlog4j.parser.RuleParser;
+import org.semanticweb.vlog4j.vlog.reasoner.VLogReasoner;
 
 /**
  * This example shows non-termination of the Skolem Chase, versus termination of

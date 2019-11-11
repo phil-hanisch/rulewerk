@@ -32,6 +32,7 @@ import org.semanticweb.vlog4j.core.reasoner.Reasoner;
 import org.semanticweb.vlog4j.examples.ExamplesUtils;
 import org.semanticweb.vlog4j.graal.GraalConjunctiveQueryToRule;
 import org.semanticweb.vlog4j.graal.GraalToVLog4JModelConverter;
+import org.semanticweb.vlog4j.vlog.reasoner.VLogReasoner;
 
 import fr.lirmm.graphik.graal.api.core.Atom;
 import fr.lirmm.graphik.graal.api.core.ConjunctiveQuery;
@@ -101,8 +102,8 @@ public class AddDataFromDlgpFile {
 		 * the reasoner automatically.
 		 */
 
-		try (Reasoner reasoner = Reasoner.getInstance()) {
-			final KnowledgeBase kb = reasoner.getKnowledgeBase();
+		final KnowledgeBase kb = new KnowledgeBase();
+		try (Reasoner reasoner = new VLogReasoner(kb)) {
 
 			/*
 			 * Add facts to the reasoner knowledge base

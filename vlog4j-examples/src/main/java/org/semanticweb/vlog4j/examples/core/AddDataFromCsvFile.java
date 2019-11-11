@@ -25,11 +25,11 @@ import java.io.IOException;
 import org.semanticweb.vlog4j.core.model.api.PositiveLiteral;
 import org.semanticweb.vlog4j.core.reasoner.KnowledgeBase;
 import org.semanticweb.vlog4j.core.reasoner.Reasoner;
-import org.semanticweb.vlog4j.core.reasoner.implementation.CsvFileDataSource;
-import org.semanticweb.vlog4j.core.reasoner.implementation.VLogReasoner;
 import org.semanticweb.vlog4j.examples.ExamplesUtils;
 import org.semanticweb.vlog4j.parser.ParsingException;
 import org.semanticweb.vlog4j.parser.RuleParser;
+import org.semanticweb.vlog4j.vlog.CsvFileDataSource;
+import org.semanticweb.vlog4j.vlog.reasoner.VLogReasoner;
 
 /**
  * This example shows how facts can be imported from files in the CSV format.
