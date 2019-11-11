@@ -1,4 +1,4 @@
-package org.semanticweb.vlog4j.core.reasoner.implementation;
+package org.semanticweb.vlog4j.vlog;
 
 /*
  * #%L
@@ -30,11 +30,11 @@ import org.semanticweb.vlog4j.core.model.api.Term;
  * @author Irina Dragoste
  *
  */
-public final class QueryResultImpl implements QueryResult {
+final class QueryResultImpl implements QueryResult {
 
 	private final List<Term> terms;
 
-	public QueryResultImpl(List<Term> terms) {
+	QueryResultImpl(List<Term> terms) {
 		this.terms = terms;
 	}
 

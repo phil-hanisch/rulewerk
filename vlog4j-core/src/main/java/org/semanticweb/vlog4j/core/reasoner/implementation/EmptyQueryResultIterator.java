@@ -53,6 +53,7 @@ public class EmptyQueryResultIterator implements QueryResultIterator {
 		return null;
 	}
 
+	@Override
 	public Correctness getCorrectness() {
 		return this.correctness;
 	}
