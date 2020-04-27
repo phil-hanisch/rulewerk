@@ -15,6 +15,8 @@ edge(5,1) .
 
 
 coloured(?X, red), coloured(?X, blue) :- vertex(?X) .
+
+% coloured(?X, ?C) :- vertex(?X), colour(?C) .
 % { coloured(X, C) : colour(C) } = 1 :- vertex(X) .
 % achieved: every vertex is coloured
 
