@@ -24,6 +24,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.semanticweb.rulewerk.core.reasoner.KnowledgeBase;
 import org.semanticweb.rulewerk.core.reasoner.LogLevel;
@@ -31,6 +32,12 @@ import org.semanticweb.rulewerk.core.reasoner.Reasoner;
 import org.semanticweb.rulewerk.core.reasoner.implementation.VLogReasoner;
 import org.semanticweb.rulewerk.parser.ParsingException;
 import org.semanticweb.rulewerk.parser.RuleParser;
+import org.semanticweb.rulewerk.core.model.api.Rule;
+import org.semanticweb.rulewerk.core.model.api.Variable;
+import org.semanticweb.rulewerk.core.model.api.Literal;
+import org.semanticweb.rulewerk.core.model.api.Conjunction;
+import org.semanticweb.rulewerk.core.model.implementation.RuleImpl;
+import org.semanticweb.rulewerk.core.model.implementation.ConjunctionImpl;
 
 /**
  * This example reasons about human diseases, based on information from the
@@ -46,17 +53,7 @@ public class AspExample {
 	public static void main(final String[] args) throws IOException, ParsingException {
 		ExamplesUtils.configureLogging();
 
-		// Loaded asp files (encoding and instance)
-
-		// Transform rules 
-		// - by introducing a helper predicate for each rule
-		// - simplifying (remove negation, disjunction in head to conjunction)
-
-		// Execute reasoning
-
-		// Get grounded rules
-
-		/* Configure rules */
+		/* Load rules and facts from asp file */
 		KnowledgeBase kb;
 		try {
 			kb = RuleParser.parse(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/colouring-encoding.rls"));
@@ -71,6 +68,38 @@ public class AspExample {
 		System.out.println("Facts used in this example:");
 		kb.getFacts().forEach(System.out::println);
 		System.out.println("");
+
+		/* Construct modified knowledge base 
+		 * - introduce a helper predicate for each rule
+		 * - remove negation (currently not done)
+		 * - transform disjunction in head to conjunction (currently implicitly)
+		 */
+		KnowledgeBase kbModified = new KnowledgeBase();
+		kbModified.addStatements(kb.getFacts());
+		int ruleIdx = 0;
+		for (Rule rule : kb.getRules()) {
+			String bodyUniversalVariableNames = rule.getBody().getUniversalVariables()
+								   .reduce("", (partialNames, variable) -> partialNames.equals("") 
+								   		? variable.toString()
+								   		: partialNames + "," + variable.toString(), String::concat);
+		    String helperString = "rule" + ruleIdx + "(" + bodyUniversalVariableNames + ")";
+	   		Literal helperLiteral = RuleParser.parsePositiveLiteral(helperString);
+			List<Literal> helperLiterals = Arrays.asList(helperLiteral);
+			Conjunction helperConjunction = new ConjunctionImpl(helperLiterals);
+
+			kbModified.addStatement(new RuleImpl(helperConjunction, rule.getBody()));
+			kbModified.addStatement(new RuleImpl(rule.getHead(), helperConjunction));
+
+			ruleIdx++;
+		}
+		
+		System.out.println("Modified rules used in this example:");
+		kbModified.getRules().forEach(System.out::println);
+		System.out.println("");
+
+		// Execute reasoning
+
+		// Get grounded rules
 
 		try (Reasoner reasoner = new VLogReasoner(kb)) {
 			reasoner.setLogFile(ExamplesUtils.OUTPUT_FOLDER + "vlog.log");
