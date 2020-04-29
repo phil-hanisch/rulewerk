@@ -23,9 +23,11 @@ package org.semanticweb.rulewerk.examples;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.semanticweb.rulewerk.core.reasoner.KnowledgeBase;
 import org.semanticweb.rulewerk.core.reasoner.LogLevel;
@@ -36,6 +38,7 @@ import org.semanticweb.rulewerk.parser.ParsingException;
 import org.semanticweb.rulewerk.parser.RuleParser;
 import org.semanticweb.rulewerk.core.model.api.Rule;
 import org.semanticweb.rulewerk.core.model.api.Variable;
+import org.semanticweb.rulewerk.core.model.api.Term;
 import org.semanticweb.rulewerk.core.model.api.Literal;
 import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
 import org.semanticweb.rulewerk.core.model.api.Conjunction;
@@ -109,28 +112,33 @@ public class AspExample {
 			/* Initialise reasoner and compute inferences */
 			reasoner.reason();
 
-			/* Get facts for all helper predicates */
-			for (int i=0; i<ruleIdx; i++) {
-				PositiveLiteral helperLiteral = helperLiterals.get(i);
-				System.out.println("Answers to query " + helperLiteral + " :");
+			/* Construct grounded knowledge base */
+			KnowledgeBase kbGrounded = new KnowledgeBase();
+			kbGrounded.addStatements(kb.getFacts());
+
+			ruleIdx = 0;
+			for (Rule rule : kb.getRules()) {
+				// Get the helper literal for the current rule
+				PositiveLiteral helperLiteral = helperLiterals.get(ruleIdx++);
 
 				try (final QueryResultIterator answers = reasoner.answerQuery(helperLiteral, true)) {
-					answers.forEachRemaining(answer -> System.out.println(" - " + answer));
-					System.out.println("Query answers are: " + answers.getCorrectness());
+					// each query result represents a grounding
+					answers.forEachRemaining(answer -> {
+						List<Term> terms = answer.getTerms();
+						List<Variable> variables = rule.getUniversalVariables().collect(Collectors.toList());
+						
+						Map<Variable, Term> substitutionMap = IntStream.range(0, variables.size()).boxed().collect(Collectors.toMap(variables::get, terms::get));
+						SubstitutionHandler substitutionHandler = new SubstitutionHandler(substitutionMap);
+
+						Rule groundedRule = substitutionHandler.substituteRule(rule);
+						kbGrounded.addStatement(groundedRule);
+					});
 				}
 			}
 
-			// /* Execute some queries */
-			// final List<String> queries = Arrays.asList("colour(?X)", "coloured(?X, ?C)", "vertex(?X)");
-			// System.out.println("\nNumber of inferred tuples for selected query atoms:");
-			// for (final String queryString : queries) {
-			// 	ExamplesUtils.printOutQueryAnswers(RuleParser.parsePositiveLiteral(queryString), reasoner);
-			// 	double answersCount = reasoner.countQueryAnswers(RuleParser.parsePositiveLiteral(queryString)).getCount();
-			// 	System.out.println("  " + queryString + ": " + answersCount);
-			// }
+			System.out.println("Grounded rules used in this example:");
+			kbGrounded.getRules().forEach(System.out::println);
+			System.out.println("");
 		}
-
-		// Get grounded rules
 	}
-
 }
