@@ -21,6 +21,7 @@ package org.semanticweb.rulewerk.examples;
  */
 
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
@@ -37,6 +38,8 @@ import org.semanticweb.rulewerk.core.reasoner.implementation.VLogReasoner;
 import org.semanticweb.rulewerk.parser.ParsingException;
 import org.semanticweb.rulewerk.parser.RuleParser;
 import org.semanticweb.rulewerk.core.model.api.Rule;
+import org.semanticweb.rulewerk.core.model.api.Entity;
+import org.semanticweb.rulewerk.core.model.api.Fact;
 import org.semanticweb.rulewerk.core.model.api.Variable;
 import org.semanticweb.rulewerk.core.model.api.Term;
 import org.semanticweb.rulewerk.core.model.api.Literal;
@@ -139,6 +142,33 @@ public class AspExample {
 			System.out.println("Grounded rules used in this example:");
 			kbGrounded.getRules().forEach(System.out::println);
 			System.out.println("");
+
+			writeKnowledgeBaseToFile(kb, ExamplesUtils.OUTPUT_FOLDER + "grounding.lp");
 		}
 	}
+
+	public static void writeKnowledgeBaseToFile(KnowledgeBase kb, String fileName) {
+		try {
+			FileWriter fileWriter = new FileWriter(fileName);
+			for (Fact fact : kb.getFacts()) {
+				fileWriter.write(getAspRepresentation(fact));				
+			}
+			for (Rule rule : kb.getRules()) {
+				fileWriter.write(getAspRepresentation(rule));
+			}
+			fileWriter.close();
+		} catch (IOException e) {
+			System.out.println("An error occurred.");
+			e.printStackTrace();
+	    }
+	}
+
+	public static String getAspRepresentation(Entity entity) {
+		return entity.getSyntacticRepresentation()
+					 .replaceAll("~", "not ")
+					 .replaceAll("fail\\((\\?\\w)?(, \\?\\w)*\\) ", "") + "\n";
+	}
 }
+
+
+
