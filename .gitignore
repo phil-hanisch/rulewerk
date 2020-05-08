@@ -55,3 +55,6 @@ rulewerk-examples/src/main/data/logs/*
 rulewerk-rdf/src/main/data/output/*
 /build-vlog/vlog/
 /TAGS
+
+# Crossword example
+rulewerk-examples/crosswords

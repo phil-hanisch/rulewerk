@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.List;
+import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -41,6 +42,7 @@ import org.semanticweb.rulewerk.core.model.api.Rule;
 import org.semanticweb.rulewerk.core.model.api.Entity;
 import org.semanticweb.rulewerk.core.model.api.Fact;
 import org.semanticweb.rulewerk.core.model.api.Variable;
+import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
 import org.semanticweb.rulewerk.core.model.api.Term;
 import org.semanticweb.rulewerk.core.model.api.Literal;
 import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
@@ -65,7 +67,7 @@ public class AspExample {
 		/* Load rules and facts from asp file */
 		KnowledgeBase kb;
 		try {
-			kb = RuleParser.parse(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/colouring-encoding.rls"));
+			kb = RuleParser.parse(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/crossword.rls"));
 		} catch (final ParsingException e) {
 			System.out.println("Failed to parse rules: " + e.getMessage());
 			return;
@@ -116,34 +118,33 @@ public class AspExample {
 			reasoner.reason();
 
 			/* Construct grounded knowledge base */
-			KnowledgeBase kbGrounded = new KnowledgeBase();
-			kbGrounded.addStatements(kb.getFacts());
+			FileWriter fileWriter = new FileWriter(ExamplesUtils.OUTPUT_FOLDER + "grounding_text.lp");
 
 			ruleIdx = 0;
+			System.out.println("Grounding started...");
 			for (Rule rule : kb.getRules()) {
 				// Get the helper literal for the current rule
 				PositiveLiteral helperLiteral = helperLiterals.get(ruleIdx++);
+				String template = rule.getSyntacticRepresentation().replaceAll("~", "not ") + "\n";
+				int i = 1;
+				Iterator<UniversalVariable> iterator = rule.getUniversalVariables().iterator();
+				while (iterator.hasNext()) {
+					template = template.replaceAll(iterator.next().getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), "\\%" + String.valueOf(i) + "\\$s");
+					i++;
+				}
+				System.out.println(template);
 
 				try (final QueryResultIterator answers = reasoner.answerQuery(helperLiteral, true)) {
 					// each query result represents a grounding
-					answers.forEachRemaining(answer -> {
-						List<Term> terms = answer.getTerms();
-						List<Variable> variables = rule.getUniversalVariables().collect(Collectors.toList());
-						
-						Map<Variable, Term> substitutionMap = IntStream.range(0, variables.size()).boxed().collect(Collectors.toMap(variables::get, terms::get));
-						SubstitutionHandler substitutionHandler = new SubstitutionHandler(substitutionMap);
-
-						Rule groundedRule = substitutionHandler.substituteRule(rule);
-						kbGrounded.addStatement(groundedRule);
-					});
+					while(answers.hasNext()) {
+						String terms[] = answers.next().getTerms().stream().map(term -> term.getSyntacticRepresentation()).toArray(String[]::new);
+						fileWriter.write(String.format(template, terms));
+					}
 				}
 			}
 
-			System.out.println("Grounded rules used in this example:");
-			kbGrounded.getRules().forEach(System.out::println);
-			System.out.println("");
-
-			writeKnowledgeBaseToFile(kb, ExamplesUtils.OUTPUT_FOLDER + "grounding.lp");
+			System.out.println("Grounding done...");
+			fileWriter.close();
 		}
 	}
 
