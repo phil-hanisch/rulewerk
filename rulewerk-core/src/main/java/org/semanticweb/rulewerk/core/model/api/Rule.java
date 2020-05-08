@@ -48,6 +48,20 @@ public interface Rule extends SyntaxObject, Statement, Entity {
 	 */
 	Conjunction<Literal> getBody();
 
+	/**
+	 * Returns true if the rule is approximated.
+	 *
+	 * @return whether the rule is approximated
+	 */
+	boolean isApproximated();
+
+	/**
+	 * Returns true if the rule is a choice rule.
+	 *
+	 * @return whether the rule is a choice rule
+	 */
+	boolean isChoiceRule();
+
 	@Override
 	default String getSyntacticRepresentation() {
 		return Serializer.getString(this);

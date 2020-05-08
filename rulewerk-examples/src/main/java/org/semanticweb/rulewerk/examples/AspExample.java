@@ -25,6 +25,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Iterator;
 import java.util.ArrayList;
@@ -42,6 +45,7 @@ import org.semanticweb.rulewerk.core.model.api.Rule;
 import org.semanticweb.rulewerk.core.model.api.Entity;
 import org.semanticweb.rulewerk.core.model.api.Fact;
 import org.semanticweb.rulewerk.core.model.api.Variable;
+import org.semanticweb.rulewerk.core.model.api.Predicate;
 import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
 import org.semanticweb.rulewerk.core.model.api.Term;
 import org.semanticweb.rulewerk.core.model.api.Literal;
@@ -67,7 +71,7 @@ public class AspExample {
 		/* Load rules and facts from asp file */
 		KnowledgeBase kb;
 		try {
-			kb = RuleParser.parse(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/crossword.rls"));
+			kb = RuleParser.parse(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/colouring-encoding.rls"));
 		} catch (final ParsingException e) {
 			System.out.println("Failed to parse rules: " + e.getMessage());
 			return;
@@ -79,6 +83,41 @@ public class AspExample {
 		System.out.println("Facts used in this example:");
 		kb.getFacts().forEach(System.out::println);
 		System.out.println("");
+
+		/* Analyse rule structure */
+		Set<Predicate> unsafePredicates = new HashSet<Predicate>();
+		Map<Predicate, Set<Predicate>> dependencyMap = new HashMap<Predicate, Set<Predicate>>();
+		for (Rule rule : kb.getRules()) {
+			for (Literal literal : rule.getHead().getLiterals()) {
+				Predicate pred = literal.getPredicate();
+				if (rule.isApproximated()) {
+					unsafePredicates.add(pred);
+				}
+
+				if (!dependencyMap.containsKey(pred)) {
+					dependencyMap.put(pred, new HashSet<Predicate>());
+				}
+
+				Set<Predicate> dependencies = dependencyMap.get(pred);
+				dependencies.addAll(rule.getBody().getLiterals().stream().map(Literal::getPredicate).collect(Collectors.toList()));
+			}
+		}
+
+		boolean changed = unsafePredicates.size() > 0;
+		while (changed) {
+			changed = false;
+			for (Predicate pred : dependencyMap.keySet()) {
+				if (!unsafePredicates.contains(pred) && dependencyMap.get(pred).stream().anyMatch(unsafePredicates::contains)) {
+					unsafePredicates.add(pred);
+					changed = true;
+				}
+			}
+		}
+
+		System.out.println("Unsafe predicates");
+		for (Predicate pred : unsafePredicates) {
+			System.out.println(pred);
+		}
 
 		/* Construct modified knowledge base 
 		 * - introduce a helper predicate for each rule
