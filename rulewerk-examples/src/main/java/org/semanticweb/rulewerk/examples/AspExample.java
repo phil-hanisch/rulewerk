@@ -164,14 +164,7 @@ public class AspExample {
 			for (Rule rule : kb.getRules()) {
 				// Get the helper literal for the current rule
 				PositiveLiteral helperLiteral = helperLiterals.get(ruleIdx++);
-				String template = rule.getSyntacticRepresentation().replaceAll("~", "not ") + "\n";
-				int i = 1;
-				Iterator<UniversalVariable> iterator = rule.getUniversalVariables().iterator();
-				while (iterator.hasNext()) {
-					template = template.replaceAll(iterator.next().getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), "\\%" + String.valueOf(i) + "\\$s");
-					i++;
-				}
-				System.out.println(template);
+				String template = buildRuleTemplate(rule, unsafePredicates);
 
 				try (final QueryResultIterator answers = reasoner.answerQuery(helperLiteral, true)) {
 					// each query result represents a grounding
@@ -185,6 +178,51 @@ public class AspExample {
 			System.out.println("Grounding done...");
 			fileWriter.close();
 		}
+	}
+
+	/**
+	 * Returns a template string for the given rule where every predicate is replaced by a placeholder
+	 * Safe predicates in the body are removed.
+	 *
+	 * @param rule the rule for which the template should be build
+	 * @param unsafePredicates a set of predicates that might be approximated (=unsafe)
+	 * @return the template for grounding the rule based on facts
+	 */
+	public static String buildRuleTemplate(Rule rule, Set<Predicate> unsafePredicates) {
+		StringBuilder builder = new StringBuilder();
+
+		builder.append(rule.getHead().getSyntacticRepresentation());
+
+		// build body while ignoring save predicates
+		boolean first = true;
+		for (Literal literal : rule.getBody()) {
+			if (!unsafePredicates.contains(literal.getPredicate())) {
+				continue;
+			}
+
+			if (first) {
+				builder.append(" :- ");
+				first = false;
+			} else {
+				builder.append(", ");
+			}
+
+			builder.append(literal.getSyntacticRepresentation().replace("~", "not "));
+		}
+
+		builder.append(" .\n");
+
+		// replace predicate names with placeholders
+		String template = builder.toString();
+		Iterator<UniversalVariable> iterator = rule.getUniversalVariables().iterator();
+		int i = 1;
+		while (iterator.hasNext()) {
+			template = template.replaceAll(iterator.next().getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), "\\%" + String.valueOf(i) + "\\$s");
+			i++;
+		}
+		System.out.println(template);
+
+		return template;
 	}
 
 	public static void writeKnowledgeBaseToFile(KnowledgeBase kb, String fileName) {
