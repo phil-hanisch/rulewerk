@@ -34,7 +34,9 @@ import org.semanticweb.rulewerk.core.model.api.Literal;
 import org.semanticweb.rulewerk.core.model.api.NegativeLiteral;
 import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
 import org.semanticweb.rulewerk.core.model.api.Predicate;
+import org.semanticweb.rulewerk.core.model.api.ChoiceElement;
 import org.semanticweb.rulewerk.core.model.api.Rule;
+import org.semanticweb.rulewerk.core.model.api.ChoiceRule;
 import org.semanticweb.rulewerk.core.model.api.Term;
 import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
 
@@ -323,6 +325,17 @@ public final class Expressions {
 	}
 
 	/**
+	 * Creates a {@code ChoiceElement}.
+	 *
+	 * @param literal a positive literal
+	 * @param context a {@link conjunction} of non-null literals
+	 * @return a {@link ChoiceElement} corresponding to the input
+	 */
+	public static ChoiceElement makeChoiceElement(final PositiveLiteral literal, final Conjunction<Literal> context) {
+		return new ChoiceElementImpl(literal, context);
+	}
+
+	/**
 	 * Creates a {@code Rule} with a single atom in its head.
 	 *
 	 * @param headLiteral  the single positive literal in the rule head
@@ -360,4 +373,14 @@ public final class Expressions {
 
 	}
 
+	/**
+	 * Creates a {@link ChoiceRule}.
+	 *
+	 * @param head a list of {@link choiceElements}
+	 * @param body a {@link Conjunction} of non-null literals
+	 * @return a {@link ChoiceRule} corresponding to the input
+	 */
+	public static ChoiceRule makeChoiceRule(final List<ChoiceElement> head, final Conjunction<Literal> body) {
+		return new ChoiceRuleImpl(head, body);
+	}
 }
