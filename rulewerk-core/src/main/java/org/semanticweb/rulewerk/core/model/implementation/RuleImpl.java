@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
  */
 
 import java.util.stream.Stream;
+import java.util.List;
+import java.util.Arrays;
 
 import org.apache.commons.lang3.Validate;
 import org.semanticweb.rulewerk.core.model.api.Conjunction;
@@ -156,6 +158,11 @@ public class RuleImpl implements Rule {
 	@Override
 	public <T> T accept(StatementVisitor<T> statementVisitor) {
 		return statementVisitor.visit(this);
+	}
+
+	@Override
+	public List<Rule> getApproximation() {
+		return Arrays.asList(this);
 	}
 
 	@Override

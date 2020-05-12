@@ -25,10 +25,14 @@ import java.util.stream.Collectors;
 
 import java.util.stream.Stream;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.apache.commons.lang3.Validate;
 import org.semanticweb.rulewerk.core.model.api.Conjunction;
 import org.semanticweb.rulewerk.core.model.api.Literal;
+import org.semanticweb.rulewerk.core.model.api.Predicate;
+import org.semanticweb.rulewerk.core.model.api.Rule;
 import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
 import org.semanticweb.rulewerk.core.model.api.ChoiceRule;
 import org.semanticweb.rulewerk.core.model.api.ChoiceElement;
@@ -46,6 +50,7 @@ public class ChoiceRuleImpl implements ChoiceRule {
 
 	final Conjunction<Literal> body;
 	final List<ChoiceElement> head;
+	final int ruleIdx;
 	
 	/**
 	 * Creates a Rule with a (possibly empty) body and an non-empty head. All variables in
@@ -57,7 +62,7 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	 * @param body list of Literals (negated or non-negated) representing the rule
 	 *             body conjuncts.
 	 */
-	public ChoiceRuleImpl(final List<ChoiceElement> head, final Conjunction<Literal> body) {
+	public ChoiceRuleImpl(final List<ChoiceElement> head, final Conjunction<Literal> body, final int ruleIdx) {
 		Validate.notNull(head);
 		Validate.notNull(body);
 		Validate.notEmpty(head,
@@ -75,6 +80,7 @@ public class ChoiceRuleImpl implements ChoiceRule {
 
 		this.head = head;
 		this.body = body;
+		this.ruleIdx = ruleIdx;
 	}
 
 	@Override
@@ -108,7 +114,9 @@ public class ChoiceRuleImpl implements ChoiceRule {
 
 	@Override
 	public Conjunction<PositiveLiteral> getHead() {
-		throw new UnsupportedOperationException("The head of choice rules are special");
+		List<PositiveLiteral> literals = this.getChoiceElements().stream().map(ChoiceElement::getLiteral).collect(Collectors.toList());
+		return new ConjunctionImpl<PositiveLiteral>(literals);
+		// throw new UnsupportedOperationException("The head of choice rules are special");
 	}
 
 	@Override
@@ -120,6 +128,37 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	public List<ChoiceElement> getChoiceElements() {
 		return this.head;
 	};
+
+	@Override
+	public List<Rule> getApproximation() {
+		List<Rule> list = new ArrayList<Rule>();
+
+		// add helper rule for grounding global variables
+		String predicateName = "rule_" + this.ruleIdx;
+		List<Term> terms = this.body.getUniversalVariables().collect(Collectors.toList());
+		Predicate predicate = new PredicateImpl(predicateName, terms.size());
+		PositiveLiteral literal = new PositiveLiteralImpl(predicate, terms);
+		Conjunction<PositiveLiteral> head = new ConjunctionImpl(Arrays.asList(literal));
+		list.add(new RuleImpl(head, this.body));
+
+		// add helper rule for grounding local variables (based on global variables)
+		int i = 0;
+		for (ChoiceElement choiceElement : this.head) {
+			Conjunction<Literal> context = choiceElement.getContext();
+
+			predicateName = "rule_" + this.ruleIdx + "_" + i;
+			terms = Stream.concat(this.body.getUniversalVariables(), context.getUniversalVariables()).distinct().collect(Collectors.toList());
+			predicate = new PredicateImpl(predicateName, terms.size());
+			literal = new PositiveLiteralImpl(predicate, terms);
+			head = new ConjunctionImpl(Arrays.asList(literal));
+
+			Conjunction<Literal> body = new ConjunctionImpl(this.body, context);
+			list.add(new RuleImpl(head, body));
+			list.add(new RuleImpl(new ConjunctionImpl(Arrays.asList(choiceElement.getLiteral())), new ConjunctionImpl(head.getLiterals())));
+		}
+
+		return list;
+	}
 
 
 	@Override

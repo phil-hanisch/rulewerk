@@ -23,6 +23,7 @@ package org.semanticweb.rulewerk.core.model.implementation;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.Validate;
@@ -47,6 +48,19 @@ public class ConjunctionImpl<T extends Literal> implements Conjunction<T> {
 	 */
 	public ConjunctionImpl(List<? extends T> literals) {
 		Validate.noNullElements(literals);
+		this.literals = literals;
+	}
+
+	/**
+	 * Constructor.
+	 *
+	 * @param conjunctions that should be combined
+	 */
+	public ConjunctionImpl(Conjunction<? extends T>... conjunctions) {
+		List<T> literals = new ArrayList<T>();
+		for (Conjunction conjunction : conjunctions) {
+			literals.addAll(conjunction.getLiterals());
+		}
 		this.literals = literals;
 	}
 

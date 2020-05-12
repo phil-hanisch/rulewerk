@@ -90,7 +90,7 @@ public class AspExample {
 		for (Rule rule : kb.getRules()) {
 			for (Literal literal : rule.getHead().getLiterals()) {
 				Predicate pred = literal.getPredicate();
-				if (rule.getHead().getLiterals().size() > 1) {
+				if (rule.requiresApproximation() || rule.getHead().getLiterals().size() > 1) {
 					unsafePredicates.add(pred);
 				}
 
@@ -126,23 +126,29 @@ public class AspExample {
 		 */
 		KnowledgeBase kbModified = new KnowledgeBase();
 		kbModified.addStatements(kb.getFacts());
+		for (Rule rule : kb.getRules()) {
+			kbModified.addStatements(rule.getApproximation());
+		}
+
+
+
 		int ruleIdx = 0;
 		List<PositiveLiteral> helperLiterals = new ArrayList();
-		for (Rule rule : kb.getRules()) {
-			String bodyUniversalVariableNames = rule.getBody().getUniversalVariables()
-								   .reduce("", (partialNames, variable) -> partialNames.equals("") 
-								   		? variable.toString()
-								   		: partialNames + "," + variable.toString(), String::concat);
-		    String helperString = "rule" + ruleIdx + "(" + bodyUniversalVariableNames + ")";
-	   		PositiveLiteral helperLiteral = RuleParser.parsePositiveLiteral(helperString);
-			Conjunction helperConjunction = new ConjunctionImpl(Arrays.asList(helperLiteral));
+		// for (Rule rule : kb.getRules()) {
+		// 	String bodyUniversalVariableNames = rule.getBody().getUniversalVariables()
+		// 						   .reduce("", (partialNames, variable) -> partialNames.equals("") 
+		// 						   		? variable.toString()
+		// 						   		: partialNames + "," + variable.toString(), String::concat);
+		// 	String helperString = "rule" + ruleIdx + "(" + bodyUniversalVariableNames + ")";
+		// 	PositiveLiteral helperLiteral = RuleParser.parsePositiveLiteral(helperString);
+		// 	Conjunction helperConjunction = new ConjunctionImpl(Arrays.asList(helperLiteral));
 
-			kbModified.addStatement(new RuleImpl(helperConjunction, rule.getBody()));
-			kbModified.addStatement(new RuleImpl(rule.getHead(), helperConjunction));
+		// 	kbModified.addStatement(new RuleImpl(helperConjunction, rule.getBody()));
+		// 	kbModified.addStatement(new RuleImpl(rule.getHead(), helperConjunction));
 
-			helperLiterals.add(helperLiteral);
-			ruleIdx++;
-		}
+		// 	helperLiterals.add(helperLiteral);
+		// 	ruleIdx++;
+		// }
 
 		System.out.println("Modified rules used in this example:");
 		kbModified.getRules().forEach(System.out::println);

@@ -50,6 +50,8 @@ import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
 
 public final class Expressions {
 
+	public static int ruleCounter = 0;
+
 	/**
 	 * Private constructor prevents this utilities class to be instantiated.
 	 */
@@ -381,6 +383,6 @@ public final class Expressions {
 	 * @return a {@link ChoiceRule} corresponding to the input
 	 */
 	public static ChoiceRule makeChoiceRule(final List<ChoiceElement> head, final Conjunction<Literal> body) {
-		return new ChoiceRuleImpl(head, body);
+		return new ChoiceRuleImpl(head, body, ruleCounter++);
 	}
 }

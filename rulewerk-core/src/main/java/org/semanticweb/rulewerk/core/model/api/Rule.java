@@ -1,6 +1,7 @@
 package org.semanticweb.rulewerk.core.model.api;
 
 import org.semanticweb.rulewerk.core.model.implementation.Serializer;
+import java.util.List;
 
 /*-
  * #%L
@@ -47,6 +48,22 @@ public interface Rule extends SyntaxObject, Statement, Entity {
 	 * @return conjunction of literals
 	 */
 	Conjunction<Literal> getBody();
+
+	/**
+	 * Returns a list of rules that approximate the (asp) rule by plain datalog rules
+	 *
+	 * @return list of rules 
+	 */
+	List<Rule> getApproximation();
+
+	/**
+	 * Returns whether the rule needs an approximation if it is transformed to a rulewerk rule
+	 *
+	 * @return whether an approximation is required
+	 */
+	default boolean requiresApproximation() {
+		return false;
+	}
 
 	@Override
 	default String getSyntacticRepresentation() {

@@ -37,6 +37,7 @@ import org.semanticweb.rulewerk.core.model.api.NamedNull;
 import org.semanticweb.rulewerk.core.model.api.Predicate;
 import org.semanticweb.rulewerk.core.model.api.PrefixDeclarationRegistry;
 import org.semanticweb.rulewerk.core.model.api.Rule;
+import org.semanticweb.rulewerk.core.model.api.ChoiceRule;
 import org.semanticweb.rulewerk.core.model.api.Term;
 import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
 import org.semanticweb.rulewerk.core.reasoner.KnowledgeBase;
@@ -64,6 +65,8 @@ public final class Serializer {
 	public static final String CLOSING_PARENTHESIS = ")";
 	public static final String OPENING_BRACKET = "[";
 	public static final String CLOSING_BRACKET = "]";
+	public static final String OPENING_BRACE = "{";
+	public static final String CLOSING_BRACE = "}";
 	public static final String RULE_SEPARATOR = " :- ";
 	public static final char AT = '@';
 	public static final String DATA_SOURCE = "@source ";
@@ -74,6 +77,7 @@ public final class Serializer {
 	public static final String SPARQL_QUERY_RESULT_DATA_SOURCE = "sparql";
 	public static final String DATA_SOURCE_SEPARATOR = ": ";
 	public static final String COLON = ":";
+	public static final String SEMICOLON = ";";
 	public static final String DOUBLE_CARET = "^^";
 	public static final char LESS_THAN = '<';
 	public static final char MORE_THAN = '>';
@@ -107,6 +111,20 @@ public final class Serializer {
 	}
 
 	/**
+	 * Creates a String representation of a given {@link ChoiceRule}.
+	 *
+	 * @see <a href=
+	 *      "https://github.com/knowsys/rulewerk/wiki/Rule-syntax-grammar">Rule
+	 *      syntax</a> .
+	 * @param rule a {@link ChoiceRule}.
+	 * @return String representation corresponding to a given {@link ChoiceRule}.
+	 *
+	 */
+	public static String getString(final ChoiceRule rule) {
+		return OPENING_BRACE + getString(rule.getChoiceElements()) + CLOSING_BRACE + RULE_SEPARATOR + getString(rule.getBody()) + STATEMENT_SEPARATOR;
+	}
+
+	/**
 	 * Creates a String representation of a given {@link Conjunction}.
 	 *
 	 * @see <a href=
@@ -125,6 +143,29 @@ public final class Serializer {
 				stringBuilder.append(COMMA);
 			}
 			stringBuilder.append(getString(literal));
+		}
+		return stringBuilder.toString();
+	}
+
+	/**
+	 * Creates a String representation of a given list of {@link ChoiceElement}.
+	 *
+	 * @see <a href=
+	 *      "https://github.com/knowsys/rulewerk/wiki/Rule-syntax-grammar">Rule
+	 *      syntax</a> .
+	 * @param list a list of {@link ChoiceElements}
+	 * @return String representation corresponding to a given list of {@link ChoiceElement}.
+	 */
+	public static String getString(final List<ChoiceElement> choiceElements) {
+		final StringBuilder stringBuilder = new StringBuilder();
+		boolean first = true;
+		for (ChoiceElement choiceElement : choiceElements) {
+			if (first) {
+				first = false;
+			} else {
+				stringBuilder.append(SEMICOLON);
+			}
+			stringBuilder.append(getString(choiceElement));
 		}
 		return stringBuilder.toString();
 	}
