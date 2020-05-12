@@ -23,34 +23,33 @@ import org.semanticweb.rulewerk.core.model.implementation.Serializer;
  */
 
 /**
- * Interface for classes representing a rule. This implementation assumes that
+ * Interface for classes representing an asp rule. This implementation assumes that
  * rules are defined by their head and body literals, without explicitly
  * specifying quantifiers. All variables in the body are considered universally
  * quantified; all variables in the head that do not occur in the body are
  * considered existentially quantified.
  * 
- * @author Markus Krötzsch
+ * @author Philipp Hanisch
  *
  */
-public interface Rule extends SyntaxObject, Statement, Entity {
+public abstract interface AspRule extends Rule {
 
 	/**
-	 * Returns the conjunction of head literals (the consequence of the rule).
-	 *
-	 * @return conjunction of literals
+	 * Returns a list of rules to approximate the asp rule in datalog 
 	 */
-	Conjunction<PositiveLiteral> getHead();
+	// List<Rule> getCorrespondingRules();
 
 	/**
-	 * Returns the conjunction of body literals (the premise of the rule).
+	 * Returns true if the rule is a choice rule.
 	 *
-	 * @return conjunction of literals
+	 * @return whether the rule is a choice rule
 	 */
-	Conjunction<Literal> getBody();
+	boolean isChoiceRule();
 
-	@Override
-	default String getSyntacticRepresentation() {
-		return Serializer.getString(this);
-	}
-
+	/**
+	 * Returns true if the rule can only be approximated
+	 *
+	 * @return whether the rule requires approximation
+	 */
+	boolean requiresApproximation();
 }

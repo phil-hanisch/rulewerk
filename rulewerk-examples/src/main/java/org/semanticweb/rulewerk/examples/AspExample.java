@@ -90,7 +90,7 @@ public class AspExample {
 		for (Rule rule : kb.getRules()) {
 			for (Literal literal : rule.getHead().getLiterals()) {
 				Predicate pred = literal.getPredicate();
-				if (rule.isApproximated()) {
+				if (rule.getHead().getLiterals().size() > 1) {
 					unsafePredicates.add(pred);
 				}
 

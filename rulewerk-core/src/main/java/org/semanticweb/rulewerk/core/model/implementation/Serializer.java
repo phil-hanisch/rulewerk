@@ -32,6 +32,7 @@ import org.semanticweb.rulewerk.core.model.api.ExistentialVariable;
 import org.semanticweb.rulewerk.core.model.api.Fact;
 import org.semanticweb.rulewerk.core.model.api.LanguageStringConstant;
 import org.semanticweb.rulewerk.core.model.api.Literal;
+import org.semanticweb.rulewerk.core.model.api.ChoiceElement;
 import org.semanticweb.rulewerk.core.model.api.NamedNull;
 import org.semanticweb.rulewerk.core.model.api.Predicate;
 import org.semanticweb.rulewerk.core.model.api.PrefixDeclarationRegistry;
@@ -143,6 +144,23 @@ public final class Serializer {
 			stringBuilder.append(NEGATIVE_IDENTIFIER);
 		}
 		stringBuilder.append(getString(literal.getPredicate(), literal.getArguments()));
+		return stringBuilder.toString();
+	}	
+
+	/**
+	 * Creates a String representation of a given {@link ChoiceElement}.
+	 *
+	 * @see <a href=
+	 *      "https://github.com/knowsys/rulewerk/wiki/Rule-syntax-grammar">Rule
+	 *      syntax</a> .
+	 * @param choiceElement a {@link ChoiceElement}
+	 * @return String representation corresponding to a given {@link ChoiceElement}.
+	 */
+	public static String getString(final ChoiceElement choiceElement) {
+		final StringBuilder stringBuilder = new StringBuilder("");
+		stringBuilder.append(getString(choiceElement.getLiteral()));
+		stringBuilder.append(COLON);
+		stringBuilder.append(getString(choiceElement.getContext()));
 		return stringBuilder.toString();
 	}
 

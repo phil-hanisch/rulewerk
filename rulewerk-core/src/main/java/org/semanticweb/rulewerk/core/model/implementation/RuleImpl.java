@@ -154,16 +154,6 @@ public class RuleImpl implements Rule {
 	}
 
 	@Override
-	public boolean isChoiceRule() {
-		return this.isChoiceRule;
-	}
-
-	@Override
-	public boolean isApproximated() {
-		return this.isChoiceRule() || this.head.getLiterals().size() > 1;
-	}
-
-	@Override
 	public <T> T accept(StatementVisitor<T> statementVisitor) {
 		return statementVisitor.visit(this);
 	}

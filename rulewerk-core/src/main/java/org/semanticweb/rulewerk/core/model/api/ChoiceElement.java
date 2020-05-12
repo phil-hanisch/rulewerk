@@ -23,30 +23,30 @@ import org.semanticweb.rulewerk.core.model.implementation.Serializer;
  */
 
 /**
- * Interface for classes representing a rule. This implementation assumes that
+ * Interface for classes representing an asp rule. This implementation assumes that
  * rules are defined by their head and body literals, without explicitly
  * specifying quantifiers. All variables in the body are considered universally
  * quantified; all variables in the head that do not occur in the body are
  * considered existentially quantified.
  * 
- * @author Markus Krötzsch
+ * @author Philipp Hanisch
  *
  */
-public interface Rule extends SyntaxObject, Statement, Entity {
+public interface ChoiceElement extends SyntaxObject, Entity {
 
 	/**
-	 * Returns the conjunction of head literals (the consequence of the rule).
-	 *
-	 * @return conjunction of literals
+	 * The "head" literal.
+	 * 
+	 * @return the literal
 	 */
-	Conjunction<PositiveLiteral> getHead();
+	PositiveLiteral getLiteral();
 
 	/**
-	 * Returns the conjunction of body literals (the premise of the rule).
+	 * The list of literals defining the context for the "head" literal.
 	 *
-	 * @return conjunction of literals
+	 * @return a list of literals.
 	 */
-	Conjunction<Literal> getBody();
+	Conjunction<Literal> getContext();
 
 	@Override
 	default String getSyntacticRepresentation() {
