@@ -47,7 +47,6 @@ public class RuleImpl implements Rule {
 
 	final Conjunction<Literal> body;
 	final Conjunction<PositiveLiteral> head;
-	final boolean isChoiceRule;
 
 	/**
 	 * Creates a Rule with a non-empty body and an non-empty head. All variables in
@@ -79,41 +78,6 @@ public class RuleImpl implements Rule {
 
 		this.head = head;
 		this.body = body;
-		this.isChoiceRule = false;
-	}
-
-	/**
-	 * Creates a Rule with a non-empty body and (a possible empty) head. All variables in
-	 * the body must be universally quantified; all variables in the head that do
-	 * not occur in the body must be existentially quantified.
-	 *
-	 * @param head list of Literals (negated or non-negated) representing the rule
-	 *             body conjuncts.
-	 * @param body list of positive (non-negated) Literals representing the rule
-	 *             head conjuncts.
-	 * @param isChoiceRule whether the rule is a choice rule
-	 */
-	public RuleImpl(final Conjunction<PositiveLiteral> head, final Conjunction<Literal> body, final boolean isChoiceRule) {
-		Validate.notNull(head);
-		Validate.notNull(body);
-		Validate.notEmpty(body.getLiterals(),
-				"Empty rule body not supported. Use Fact objects to assert unconditionally true atoms.");
-		// Validate.notEmpty(head.getLiterals(),
-		// 		"Empty rule head not supported. To capture integrity constraints, use a dedicated predicate that represents a contradiction.");
-		if (body.getExistentialVariables().count() > 0) {
-			throw new IllegalArgumentException(
-					"Rule body cannot contain existential variables. Rule was: " + head + " :- " + body);
-		}
-		Set<UniversalVariable> bodyVariables = body.getUniversalVariables().collect(Collectors.toSet());
-		if (head.getUniversalVariables().filter(x -> !bodyVariables.contains(x)).count() > 0) {
-			throw new IllegalArgumentException(
-					"Universally quantified variables in rule head must also occur in rule body. Rule was: " + head
-							+ " :- " + body);
-		}
-
-		this.head = head;
-		this.body = body;
-		this.isChoiceRule = isChoiceRule;
 	}
 
 	@Override
@@ -158,11 +122,6 @@ public class RuleImpl implements Rule {
 	@Override
 	public <T> T accept(StatementVisitor<T> statementVisitor) {
 		return statementVisitor.visit(this);
-	}
-
-	@Override
-	public List<Rule> getApproximation() {
-		return Arrays.asList(this);
 	}
 
 	@Override

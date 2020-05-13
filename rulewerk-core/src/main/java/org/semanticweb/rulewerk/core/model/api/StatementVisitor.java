@@ -46,6 +46,14 @@ public interface StatementVisitor<T> {
 	T visit(Rule statement);
 
 	/**
+	 * Visits a {@link AspRule} and returns a result.
+	 * 
+	 * @param statement the statement to visit
+	 * @return some result
+	 */
+	T visit(AspRule statement);
+
+	/**
 	 * Visits a {@link DataSourceDeclaration} and returns a result.
 	 * 
 	 * @param statement the statement to visit

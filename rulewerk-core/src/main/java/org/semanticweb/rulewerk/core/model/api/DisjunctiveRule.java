@@ -1,6 +1,7 @@
 package org.semanticweb.rulewerk.core.model.api;
 
 import org.semanticweb.rulewerk.core.model.implementation.Serializer;
+
 import java.util.List;
 
 /*-
@@ -24,30 +25,26 @@ import java.util.List;
  */
 
 /**
- * Interface for classes representing a rule. This implementation assumes that
+ * Interface for classes representing an asp rule. This implementation assumes that
  * rules are defined by their head and body literals, without explicitly
  * specifying quantifiers. All variables in the body are considered universally
  * quantified; all variables in the head that do not occur in the body are
  * considered existentially quantified.
  * 
- * @author Markus Krötzsch
+ * @author Philipp Hanisch
  *
  */
-public interface Rule extends SyntaxObject, Statement, Entity {
+public interface DisjunctiveRule extends AspRule {
 
 	/**
-	 * Returns the conjunction of head literals (the consequence of the rule).
-	 *
-	 * @return conjunction of literals
+	 * Returns a list of choice elements that occur in the head of the rule
 	 */
-	Conjunction<PositiveLiteral> getHead();
+	List<ChoiceElement> getChoiceElements();
 
-	/**
-	 * Returns the conjunction of body literals (the premise of the rule).
-	 *
-	 * @return conjunction of literals
-	 */
-	Conjunction<Literal> getBody();
+	@Override
+	default boolean isChoiceRule() {
+		return false;
+	};
 
 	@Override
 	default String getSyntacticRepresentation() {

@@ -113,10 +113,9 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	}
 
 	@Override
-	public Conjunction<PositiveLiteral> getHead() {
+	public Conjunction<PositiveLiteral> getHeadLiterals() {
 		List<PositiveLiteral> literals = this.getChoiceElements().stream().map(ChoiceElement::getLiteral).collect(Collectors.toList());
 		return new ConjunctionImpl<PositiveLiteral>(literals);
-		// throw new UnsupportedOperationException("The head of choice rules are special");
 	}
 
 	@Override

@@ -1,6 +1,7 @@
 package org.semanticweb.rulewerk.core.model.api;
 
 import org.semanticweb.rulewerk.core.model.implementation.Serializer;
+import java.util.List;
 
 /*-
  * #%L
@@ -32,12 +33,21 @@ import org.semanticweb.rulewerk.core.model.implementation.Serializer;
  * @author Philipp Hanisch
  *
  */
-public abstract interface AspRule extends Rule {
+public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 
 	/**
-	 * Returns a list of rules to approximate the asp rule in datalog 
+	 * Returns the conjunction of head literals (the consequence of the rule).
+	 *
+	 * @return conjunction of literals
 	 */
-	// List<Rule> getCorrespondingRules();
+	Conjunction<PositiveLiteral> getHeadLiterals();
+
+	/**
+	 * Returns the conjunction of body literals (the premise of the rule).
+	 *
+	 * @return conjunction of literals
+	 */
+	Conjunction<Literal> getBody();
 
 	/**
 	 * Returns true if the rule is a choice rule.
@@ -52,4 +62,16 @@ public abstract interface AspRule extends Rule {
 	 * @return whether the rule requires approximation
 	 */
 	boolean requiresApproximation();
+
+	/**
+	 * Returns a list of rules that approximate the (asp) rule by plain datalog rules
+	 *
+	 * @return list of rules 
+	 */
+	List<Rule> getApproximation();
+
+	@Override
+	default String getSyntacticRepresentation() {
+		return Serializer.getString(this);
+	}
 }

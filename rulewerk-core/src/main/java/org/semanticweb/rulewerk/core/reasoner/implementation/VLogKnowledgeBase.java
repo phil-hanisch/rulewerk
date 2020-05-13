@@ -37,6 +37,7 @@ import org.semanticweb.rulewerk.core.model.api.Literal;
 import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
 import org.semanticweb.rulewerk.core.model.api.Predicate;
 import org.semanticweb.rulewerk.core.model.api.Rule;
+import org.semanticweb.rulewerk.core.model.api.AspRule;
 import org.semanticweb.rulewerk.core.model.api.Statement;
 import org.semanticweb.rulewerk.core.model.api.StatementVisitor;
 import org.semanticweb.rulewerk.core.model.api.Term;
@@ -200,6 +201,11 @@ public class VLogKnowledgeBase {
 		@Override
 		public Void visit(final DataSourceDeclaration statement) {
 			registerEdbDeclaration(statement);
+			return null;
+		}
+
+		@Override
+		public Void visit(final AspRule statement) {
 			return null;
 		}
 

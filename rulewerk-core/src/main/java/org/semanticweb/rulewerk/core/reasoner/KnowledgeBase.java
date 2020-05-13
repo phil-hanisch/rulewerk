@@ -47,6 +47,7 @@ import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
 import org.semanticweb.rulewerk.core.model.api.Predicate;
 import org.semanticweb.rulewerk.core.model.api.PrefixDeclarationRegistry;
 import org.semanticweb.rulewerk.core.model.api.Rule;
+import org.semanticweb.rulewerk.core.model.api.AspRule;
 import org.semanticweb.rulewerk.core.model.api.Statement;
 import org.semanticweb.rulewerk.core.model.api.StatementVisitor;
 import org.semanticweb.rulewerk.core.model.implementation.MergingPrefixDeclarationRegistry;
@@ -91,6 +92,11 @@ public class KnowledgeBase implements Iterable<Statement> {
 		}
 
 		@Override
+		public Boolean visit(final AspRule statement) {
+			return true;
+		}
+
+		@Override
 		public Boolean visit(final DataSourceDeclaration statement) {
 			KnowledgeBase.this.dataSourceDeclarations.add(statement);
 			return true;
@@ -116,6 +122,11 @@ public class KnowledgeBase implements Iterable<Statement> {
 
 		@Override
 		public Boolean visit(final Rule statement) {
+			return true;
+		}
+
+		@Override
+		public Boolean visit(final AspRule statement) {
 			return true;
 		}
 
@@ -154,6 +165,15 @@ public class KnowledgeBase implements Iterable<Statement> {
 		@Override
 		public Void visit(final Rule statement) {
 			if (this.ownType.equals(Rule.class)) {
+				this.extracted.add((T) statement);
+			}
+			return null;
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public Void visit(final AspRule statement) {
+			if (this.ownType.equals(AspRule.class)) {
 				this.extracted.add((T) statement);
 			}
 			return null;
@@ -367,6 +387,16 @@ public class KnowledgeBase implements Iterable<Statement> {
 	 */
 	public List<Rule> getRules() {
 		return this.getStatementsByType(Rule.class);
+	}
+
+	/**
+	 * Get the list of all asp rules that have been added to the knowledge base. The
+	 * list is read-only and cannot be modified to add or delete rules.
+	 *
+	 * @return list of {@link AspRule}s
+	 */
+	public List<AspRule> getAspRules() {
+		return this.getStatementsByType(AspRule.class);
 	}
 
 	/**

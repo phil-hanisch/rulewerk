@@ -37,6 +37,7 @@ import org.semanticweb.rulewerk.core.model.api.NamedNull;
 import org.semanticweb.rulewerk.core.model.api.Predicate;
 import org.semanticweb.rulewerk.core.model.api.PrefixDeclarationRegistry;
 import org.semanticweb.rulewerk.core.model.api.Rule;
+import org.semanticweb.rulewerk.core.model.api.AspRule;
 import org.semanticweb.rulewerk.core.model.api.ChoiceRule;
 import org.semanticweb.rulewerk.core.model.api.Term;
 import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
@@ -108,6 +109,20 @@ public final class Serializer {
 	 */
 	public static String getString(final Rule rule) {
 		return getString(rule.getHead()) + RULE_SEPARATOR + getString(rule.getBody()) + STATEMENT_SEPARATOR;
+	}
+
+	/**
+	 * Creates a String representation of a given {@link AspRule}.
+	 *
+	 * @see <a href=
+	 *      "https://github.com/knowsys/rulewerk/wiki/Rule-syntax-grammar">Rule
+	 *      syntax</a> .
+	 * @param rule a {@link AspRule}.
+	 * @return String representation corresponding to a given {@link AspRule}.
+	 *
+	 */
+	public static String getString(final AspRule rule) {
+		return getString(rule.getHeadLiterals()) + RULE_SEPARATOR + getString(rule.getBody()) + STATEMENT_SEPARATOR;
 	}
 
 	/**
