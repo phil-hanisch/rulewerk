@@ -154,6 +154,8 @@ public class ChoiceRuleImpl implements ChoiceRule {
 			Conjunction<Literal> body = new ConjunctionImpl(this.body, context);
 			list.add(new RuleImpl(head, body));
 			list.add(new RuleImpl(new ConjunctionImpl(Arrays.asList(choiceElement.getLiteral())), new ConjunctionImpl(head.getLiterals())));
+
+			i++;
 		}
 
 		return list;
