@@ -1,3 +1,5 @@
+!ASP
+
 colour(red) .
 colour(blue) .
 
@@ -16,7 +18,7 @@ edge(5,1) .
 % achieved: equality predicate for colours
 equal(?X, ?X) :- colour(?X) .
 
-coloured(?X, red), coloured(?X, blue) :- vertex(?X) .
+{ coloured(?X, ?C) : colour(?C) } :- vertex(?X) .
 % coloured(?X, blue), coloured(?X, red) :- vertex(?X) .
 % coloured(?X, blue) :- vertex(?X) .
 % achieved: every vertex is coloured

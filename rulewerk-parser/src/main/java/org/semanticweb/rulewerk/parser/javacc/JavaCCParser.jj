@@ -54,6 +54,7 @@ import org.semanticweb.rulewerk.core.exceptions.PrefixDeclarationException;
 import org.semanticweb.rulewerk.core.model.api.Statement;
 import org.semanticweb.rulewerk.core.model.api.Rule;
 import org.semanticweb.rulewerk.core.model.api.ChoiceRule;
+import org.semanticweb.rulewerk.core.model.api.DisjunctiveRule;
 import org.semanticweb.rulewerk.core.model.api.Literal;
 import org.semanticweb.rulewerk.core.model.api.NegativeLiteral;
 import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
@@ -101,6 +102,21 @@ TOKEN_MGR_DECLS : {
 }
 
 void parse() throws PrefixDeclarationException : {
+} {
+	( < ASP > asp() | classic() )
+	< EOF >
+}
+
+void asp() throws PrefixDeclarationException : {
+} {
+	( base() )?
+	( prefix() )*
+	( source() )*
+	( aspStatement() )*
+	< EOF >
+}
+
+void classic() throws PrefixDeclarationException : {
 } {
 	( base() )?
 	( prefix() )*
@@ -173,7 +189,18 @@ void statement() throws PrefixDeclarationException : {
     resetVariableSets();
 } {
     ( LOOKAHEAD(rule()) statement = rule() { addStatement(statement); }
-	| statement = choiceRule() { addStatement(statement); }
+	| statement = fact(FormulaContext.HEAD) { addStatement(statement); }
+    | knowledgeBase = directive() { setKnowledgeBase(knowledgeBase); }
+    )
+}
+
+void aspStatement() throws PrefixDeclarationException : {
+    Statement statement;
+	KnowledgeBase knowledgeBase;
+    resetVariableSets();
+} {
+    ( statement = choiceRule() { addStatement(statement); }
+	| LOOKAHEAD(disjunctiveRule()) statement = disjunctiveRule() { addStatement(statement); }
 	| statement = fact(FormulaContext.HEAD) { addStatement(statement); }
     | knowledgeBase = directive() { setKnowledgeBase(knowledgeBase); }
     )
@@ -273,6 +300,36 @@ ChoiceElement choiceElement(FormulaContext context) throws PrefixDeclarationExce
 } {
 	l = positiveLiteral(context) < CHOICE_COLON > list = listOfLiterals(FormulaContext.BODY) {
 		return Expressions.makeChoiceElement(l, Expressions.makeConjunction(list));
+	}
+}
+
+DisjunctiveRule disjunctiveRule() throws PrefixDeclarationException : {
+    List < PositiveLiteral > head;
+    List < Literal > body;
+} {
+    head = listOfDisjunctivePositiveLiterals(FormulaContext.HEAD) < ARROW > body = listOfLiterals(FormulaContext.BODY) < DOT > {
+        // check that the intersection between headExiVars and BodyVars is empty
+        for (String variable : headExiVars) {
+          if (bodyVars.contains(variable))
+            throw new ParseException("Malformed rule " + head + " :- " + body + "\nExistential variable " + variable + " also used in rule body.");
+        }
+
+        // check that bodyVars contains headUniVars
+        for (String variable : headUniVars) {
+          if (!bodyVars.contains(variable))
+            throw new ParseException("Unsafe rule " + head + " :- " + body  + "\nUniversal variable " + variable + " occurs in head but not in body.");
+        }
+
+        return Expressions.makeDisjunctiveRule(Expressions.makePositiveConjunction(head), Expressions.makeConjunction(body));
+    }
+}
+
+List < PositiveLiteral > listOfDisjunctivePositiveLiterals(FormulaContext context) throws PrefixDeclarationException : {
+    PositiveLiteral l;
+    List < PositiveLiteral > list = new ArrayList < PositiveLiteral > ();
+} {
+	l = positiveLiteral(context) { list.add(l); } ( < PIPE > l = positiveLiteral(context) { list.add(l); } )* {
+		return list;
 	}
 }
 
@@ -607,6 +664,8 @@ TOKEN : {
   | < CHOICE_CLOSE : "}" >
   | < CHOICE_SEMICOLON : ";" >
   | < CHOICE_COLON : ":" >
+  | < PIPE : "|" >
+  | < ASP : "!ASP" >
 }
 
 < DIRECTIVE_ARGUMENTS > TOKEN : {
