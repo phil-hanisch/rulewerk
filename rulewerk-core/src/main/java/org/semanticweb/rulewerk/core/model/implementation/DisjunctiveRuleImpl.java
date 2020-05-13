@@ -34,22 +34,21 @@ import org.semanticweb.rulewerk.core.model.api.Literal;
 import org.semanticweb.rulewerk.core.model.api.Predicate;
 import org.semanticweb.rulewerk.core.model.api.Rule;
 import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
-import org.semanticweb.rulewerk.core.model.api.ChoiceRule;
-import org.semanticweb.rulewerk.core.model.api.ChoiceElement;
+import org.semanticweb.rulewerk.core.model.api.DisjunctiveRule;
 import org.semanticweb.rulewerk.core.model.api.StatementVisitor;
 import org.semanticweb.rulewerk.core.model.api.Term;
 import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
 
 /**
- * Implementation for {@link ChoiceRule}. Represents asp choice rule.
+ * Implementation for {@link Disjunctive}. Represents a disjunctive asp rule.
  * 
  * @author Philipp Hanisch
  *
  */
-public class ChoiceRuleImpl implements ChoiceRule {
+public class DisjunctiveRuleImpl implements DisjunctiveRule {
 
 	final Conjunction<Literal> body;
-	final List<ChoiceElement> head;
+	final Conjunction<PositiveLiteral> head;
 	final int ruleIdx;
 	
 	/**
@@ -57,15 +56,15 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	 * the body must be universally quantified; all variables in the head that do
 	 * not occur in the body must be existentially quantified.
 	 *
-	 * @param head list of choice elements representing the rule
+	 * @param head list of positive literals (non-negated) representing the rule
 	 *             head conjuncts.
 	 * @param body list of Literals (negated or non-negated) representing the rule
 	 *             body conjuncts.
 	 */
-	public ChoiceRuleImpl(final List<ChoiceElement> head, final Conjunction<Literal> body, final int ruleIdx) {
+	public DisjunctiveRuleImpl(final Conjunction<PositiveLiteral> head, final Conjunction<Literal> body, final int ruleIdx) {
 		Validate.notNull(head);
 		Validate.notNull(body);
-		Validate.notEmpty(head,
+		Validate.notEmpty(head.getLiterals(),
 				"Empty rule head not supported. To capture integrity constraints, use a dedicated predicate that represents a contradiction.");
 		if (body.getExistentialVariables().count() > 0) {
 			throw new IllegalArgumentException(
@@ -99,12 +98,12 @@ public class ChoiceRuleImpl implements ChoiceRule {
 		if (obj == null) {
 			return false;
 		}
-		if (!(obj instanceof ChoiceRule)) {
+		if (!(obj instanceof DisjunctiveRule)) {
 			return false;
 		}
-		final ChoiceRule other = (ChoiceRule) obj;
+		final DisjunctiveRule other = (DisjunctiveRule) obj;
 
-		return this.head.equals(other.getChoiceElements()) && this.body.equals(other.getBody());
+		return this.head.equals(other.getHeadLiterals()) && this.body.equals(other.getBody());
 	}
 
 	@Override
@@ -114,19 +113,13 @@ public class ChoiceRuleImpl implements ChoiceRule {
 
 	@Override
 	public Conjunction<PositiveLiteral> getHeadLiterals() {
-		List<PositiveLiteral> literals = this.getChoiceElements().stream().map(ChoiceElement::getLiteral).collect(Collectors.toList());
-		return new ConjunctionImpl<PositiveLiteral>(literals);
+		return this.head;
 	}
 
 	@Override
 	public Conjunction<Literal> getBody() {
 		return this.body;
 	}
-
-	@Override
-	public List<ChoiceElement> getChoiceElements() {
-		return this.head;
-	};
 
 	@Override
 	public List<Rule> getApproximation() {
@@ -137,26 +130,16 @@ public class ChoiceRuleImpl implements ChoiceRule {
 		List<Term> terms = this.body.getUniversalVariables().collect(Collectors.toList());
 		Predicate predicate = new PredicateImpl(predicateName, terms.size());
 		PositiveLiteral literal = new PositiveLiteralImpl(predicate, terms);
-		Conjunction<PositiveLiteral> head = new ConjunctionImpl(Arrays.asList(literal));
-		list.add(new RuleImpl(head, this.body));
-
-		// add helper rule for grounding local variables (based on global variables)
-		int i = 0;
-		for (ChoiceElement choiceElement : this.head) {
-			Conjunction<Literal> context = choiceElement.getContext();
-
-			predicateName = "rule_" + this.ruleIdx + "_" + i;
-			terms = Stream.concat(this.body.getUniversalVariables(), context.getUniversalVariables()).distinct().collect(Collectors.toList());
-			predicate = new PredicateImpl(predicateName, terms.size());
-			literal = new PositiveLiteralImpl(predicate, terms);
-			head = new ConjunctionImpl(Arrays.asList(literal));
-
-			Conjunction<Literal> body = new ConjunctionImpl(this.body, context);
-			list.add(new RuleImpl(head, body));
-			list.add(new RuleImpl(new ConjunctionImpl(Arrays.asList(choiceElement.getLiteral())), new ConjunctionImpl(head.getLiterals())));
-		}
+		Conjunction<PositiveLiteral> conjunction = new ConjunctionImpl(Arrays.asList(literal));
+		list.add(new RuleImpl(conjunction, this.body));
+		list.add(new RuleImpl(this.head, new ConjunctionImpl<Literal>(conjunction)));
 
 		return list;
+	}
+
+	@Override
+	public boolean requiresApproximation() {
+		return this.head.getLiterals().size() > 1;
 	}
 
 	@Override
@@ -166,7 +149,7 @@ public class ChoiceRuleImpl implements ChoiceRule {
 
 	@Override
 	public Stream<Term> getTerms() {
-		return Stream.concat(this.body.getTerms(), this.head.stream().flatMap(elem -> elem.getTerms())).distinct();
+		return Stream.concat(this.body.getTerms(), this.head.getTerms()).distinct();
 	}
 
 }

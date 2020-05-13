@@ -36,11 +36,6 @@ import java.util.List;
  */
 public interface DisjunctiveRule extends AspRule {
 
-	/**
-	 * Returns a list of choice elements that occur in the head of the rule
-	 */
-	List<ChoiceElement> getChoiceElements();
-
 	@Override
 	default boolean isChoiceRule() {
 		return false;
