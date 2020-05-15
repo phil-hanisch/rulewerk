@@ -41,6 +41,7 @@ import org.semanticweb.rulewerk.core.reasoner.QueryResultIterator;
 import org.semanticweb.rulewerk.core.reasoner.implementation.VLogReasoner;
 import org.semanticweb.rulewerk.parser.ParsingException;
 import org.semanticweb.rulewerk.parser.RuleParser;
+import org.semanticweb.rulewerk.core.model.api.AspRule;
 import org.semanticweb.rulewerk.core.model.api.Rule;
 import org.semanticweb.rulewerk.core.model.api.Entity;
 import org.semanticweb.rulewerk.core.model.api.Fact;
@@ -68,7 +69,9 @@ public class AspExample {
 	public static void main(final String[] args) throws IOException, ParsingException {
 		ExamplesUtils.configureLogging();
 
-		/* Load rules and facts from asp file */
+		/**
+		 * Load rules and facts from asp file
+		 */
 		KnowledgeBase kb;
 		try {
 			kb = RuleParser.parse(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/colouring-encoding.rls"));
@@ -76,21 +79,23 @@ public class AspExample {
 			System.out.println("Failed to parse rules: " + e.getMessage());
 			return;
 		}
-		System.out.println("Rules used in this example:");
-		kb.getRules().forEach(System.out::println);
+		System.out.println("Asp rules used in this example:");
+		kb.getAspRules().forEach(System.out::println);
 		System.out.println("");
 
 		System.out.println("Facts used in this example:");
 		kb.getFacts().forEach(System.out::println);
 		System.out.println("");
 
-		/* Analyse rule structure */
+		/**
+		 * Analyse rule structure
+		 */
 		Set<Predicate> unsafePredicates = new HashSet<Predicate>();
 		Map<Predicate, Set<Predicate>> dependencyMap = new HashMap<Predicate, Set<Predicate>>();
-		for (Rule rule : kb.getRules()) {
-			for (Literal literal : rule.getHead().getLiterals()) {
+		for (AspRule rule : kb.getAspRules()) {
+			for (Literal literal : rule.getHeadLiterals()) {
 				Predicate pred = literal.getPredicate();
-				if (rule.requiresApproximation() || rule.getHead().getLiterals().size() > 1) {
+				if (rule.requiresApproximation()) {
 					unsafePredicates.add(pred);
 				}
 
@@ -115,47 +120,21 @@ public class AspExample {
 		}
 
 		System.out.println("Unsafe predicates");
-		for (Predicate pred : unsafePredicates) {
-			System.out.println(pred);
-		}
+		unsafePredicates.forEach(System.out::println);
+		System.out.println("");
 
-		/* Construct modified knowledge base 
-		 * - introduce a helper predicate for each rule
-		 * - remove negation (currently not done)
-		 * - transform disjunction in head to conjunction (currently implicitly)
+		/**
+		 * Transform asp rules into standard rules 
 		 */
-		KnowledgeBase kbModified = new KnowledgeBase();
-		kbModified.addStatements(kb.getFacts());
-		for (Rule rule : kb.getRules()) {
-			kbModified.addStatements(rule.getApproximation());
+		for (AspRule rule : kb.getAspRules()) {
+			kb.addStatements(rule.getApproximation());
 		}
-
-
-
-		int ruleIdx = 0;
-		List<PositiveLiteral> helperLiterals = new ArrayList();
-		// for (Rule rule : kb.getRules()) {
-		// 	String bodyUniversalVariableNames = rule.getBody().getUniversalVariables()
-		// 						   .reduce("", (partialNames, variable) -> partialNames.equals("") 
-		// 						   		? variable.toString()
-		// 						   		: partialNames + "," + variable.toString(), String::concat);
-		// 	String helperString = "rule" + ruleIdx + "(" + bodyUniversalVariableNames + ")";
-		// 	PositiveLiteral helperLiteral = RuleParser.parsePositiveLiteral(helperString);
-		// 	Conjunction helperConjunction = new ConjunctionImpl(Arrays.asList(helperLiteral));
-
-		// 	kbModified.addStatement(new RuleImpl(helperConjunction, rule.getBody()));
-		// 	kbModified.addStatement(new RuleImpl(rule.getHead(), helperConjunction));
-
-		// 	helperLiterals.add(helperLiteral);
-		// 	ruleIdx++;
-		// }
-
-		System.out.println("Modified rules used in this example:");
-		kbModified.getRules().forEach(System.out::println);
+		System.out.println("Rules used in this example:");
+		kb.getRules().forEach(System.out::println);
 		System.out.println("");
 
 		/* Execute reasoning */
-		try (Reasoner reasoner = new VLogReasoner(kbModified)) {
+		try (Reasoner reasoner = new VLogReasoner(kb)) {
 			reasoner.setLogFile(ExamplesUtils.OUTPUT_FOLDER + "vlog.log");
 			reasoner.setLogLevel(LogLevel.DEBUG);
 
@@ -165,23 +144,19 @@ public class AspExample {
 			/* Construct grounded knowledge base */
 			FileWriter fileWriter = new FileWriter(ExamplesUtils.OUTPUT_FOLDER + "grounding_text.lp");
 
-			ruleIdx = 0;
-			System.out.println("Grounding started...");
-			for (Rule rule : kb.getRules()) {
-				// Get the helper literal for the current rule
-				PositiveLiteral helperLiteral = helperLiterals.get(ruleIdx++);
-				String template = buildRuleTemplate(rule, unsafePredicates);
-
-				try (final QueryResultIterator answers = reasoner.answerQuery(helperLiteral, true)) {
-					// each query result represents a grounding
-					while(answers.hasNext()) {
-						String terms[] = answers.next().getTerms().stream().map(term -> term.getSyntacticRepresentation()).toArray(String[]::new);
-						fileWriter.write(String.format(template, terms));
-					}
-				}
+			for (Fact fact : kb.getFacts()) {
+				try {
+					fileWriter.write(fact.getSyntacticRepresentation() + "\n");
+				} catch (IOException e) {
+					System.out.println("An error occurred.");
+					e.printStackTrace();
+			    }
 			}
 
-			System.out.println("Grounding done...");
+			for (AspRule rule : kb.getAspRules()) {
+				rule.groundRule(reasoner, unsafePredicates, fileWriter);
+			}
+
 			fileWriter.close();
 		}
 	}

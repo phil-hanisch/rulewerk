@@ -1,6 +1,5 @@
 package org.semanticweb.rulewerk.core.model.implementation;
 
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /*-
@@ -25,8 +24,10 @@ import java.util.stream.Collectors;
 
 import java.util.stream.Stream;
 import java.util.List;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.io.FileWriter;
 
 import org.apache.commons.lang3.Validate;
 import org.semanticweb.rulewerk.core.model.api.Conjunction;
@@ -39,6 +40,8 @@ import org.semanticweb.rulewerk.core.model.api.ChoiceElement;
 import org.semanticweb.rulewerk.core.model.api.StatementVisitor;
 import org.semanticweb.rulewerk.core.model.api.Term;
 import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
+import org.semanticweb.rulewerk.core.reasoner.Reasoner;
+
 
 /**
  * Implementation for {@link ChoiceRule}. Represents asp choice rule.
@@ -160,6 +163,10 @@ public class ChoiceRuleImpl implements ChoiceRule {
 
 		return list;
 	}
+
+	@Override
+	public void groundRule(Reasoner reasoner, Set<Predicate> approximatedPredicates, FileWriter writer) {
+	};
 
 	@Override
 	public <T> T accept(StatementVisitor<T> statementVisitor) {

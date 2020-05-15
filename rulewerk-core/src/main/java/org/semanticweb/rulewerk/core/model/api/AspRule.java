@@ -1,7 +1,11 @@
 package org.semanticweb.rulewerk.core.model.api;
 
 import org.semanticweb.rulewerk.core.model.implementation.Serializer;
+import org.semanticweb.rulewerk.core.reasoner.Reasoner;
+
+import java.io.FileWriter;
 import java.util.List;
+import java.util.Set;
 
 /*-
  * #%L
@@ -70,8 +74,45 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	 */
 	List<Rule> getApproximation();
 
+	/**
+	 * Write all instances of the rule via the given writer
+	 *
+	 * @param reasoner the reasoner where the facts has been materialised
+	 * @param approximatedPredicates a set of approximated predicates
+	 * @param writer a file writer to write the grounded rules
+	 */
+	void groundRule(Reasoner reasoner, Set<Predicate> approximatedPredicates, FileWriter writer);
+
 	@Override
 	default String getSyntacticRepresentation() {
 		return Serializer.getString(this);
+	}
+
+	/**
+	 * Gets the template String for the rule body
+	 *
+	 * @param approximatedPredicates a set of approximated predicates
+	 * @return the template String for the body
+	 */
+	default String getBodyTemplate(Set<Predicate> approximatedPredicates) {
+		StringBuilder builder = new StringBuilder();
+		boolean first = true;
+		for (Literal literal : this.getBody()) {
+			// ignore save predicates
+			if (!approximatedPredicates.contains(literal.getPredicate())) {
+				continue;
+			}
+
+			if (first) {
+				builder.append(" :- ");
+				first = false;
+			} else {
+				builder.append(", ");
+			}
+
+			builder.append(literal.getSyntacticRepresentation().replace("~", "not "));
+		}
+
+		return builder.toString();
 	}
 }
