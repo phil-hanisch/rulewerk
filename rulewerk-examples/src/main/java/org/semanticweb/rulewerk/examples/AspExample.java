@@ -154,6 +154,7 @@ public class AspExample {
 			}
 
 			for (AspRule rule : kb.getAspRules()) {
+				System.out.println(rule);
 				rule.groundRule(reasoner, unsafePredicates, fileWriter);
 			}
 

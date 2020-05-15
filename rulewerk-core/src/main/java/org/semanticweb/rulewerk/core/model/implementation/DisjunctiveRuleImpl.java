@@ -31,7 +31,6 @@ import java.util.Iterator;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import org.semanticweb.rulewerk.core.reasoner.QueryResultIterator;
 import org.apache.commons.lang3.Validate;
 import org.semanticweb.rulewerk.core.model.api.Conjunction;
 import org.semanticweb.rulewerk.core.model.api.Literal;
@@ -43,6 +42,7 @@ import org.semanticweb.rulewerk.core.model.api.StatementVisitor;
 import org.semanticweb.rulewerk.core.model.api.Term;
 import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
 import org.semanticweb.rulewerk.core.reasoner.Reasoner;
+import org.semanticweb.rulewerk.core.reasoner.QueryResultIterator;
 
 /**
  * Implementation for {@link Disjunctive}. Represents a disjunctive asp rule.
@@ -206,5 +206,4 @@ public class DisjunctiveRuleImpl implements DisjunctiveRule {
 
 		return template;
 	}
-
 }
