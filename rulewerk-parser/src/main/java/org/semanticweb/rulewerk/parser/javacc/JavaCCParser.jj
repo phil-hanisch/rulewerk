@@ -103,25 +103,19 @@ TOKEN_MGR_DECLS : {
 
 void parse() throws PrefixDeclarationException : {
 } {
-	( < ASP > asp() | classic() )
+	( base() )?
+	( prefix() )*
+	( source() )*
+	( statement() )*
 	< EOF >
 }
 
-void asp() throws PrefixDeclarationException : {
+void parseAsp() throws PrefixDeclarationException : {
 } {
 	( base() )?
 	( prefix() )*
 	( source() )*
 	( aspStatement() )*
-	< EOF >
-}
-
-void classic() throws PrefixDeclarationException : {
-} {
-	( base() )?
-	( prefix() )*
-	( source() )*
-	( statement() )*
 	< EOF >
 }
 
@@ -665,7 +659,6 @@ TOKEN : {
   | < CHOICE_SEMICOLON : ";" >
   | < CHOICE_COLON : ":" >
   | < PIPE : "|" >
-  | < ASP : "!ASP" >
 }
 
 < DIRECTIVE_ARGUMENTS > TOKEN : {

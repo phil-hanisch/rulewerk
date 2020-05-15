@@ -144,6 +144,15 @@ public class RuleParser {
 		return parse(inputStream);
 	}
 
+
+	public static KnowledgeBase parseAsp(final InputStream stream) throws ParsingException {
+		return parseAsp(stream, DEFAULT_STRING_ENCODING);
+	}
+
+	public static KnowledgeBase parseAsp(final InputStream stream, final String encoding) throws ParsingException {
+		return doParseAsp(new JavaCCParser(stream, encoding));
+	}
+
 	/**
 	 * Interface for a method parsing a fragment of the supported syntax.
 	 *
@@ -255,6 +264,20 @@ public class RuleParser {
 	static KnowledgeBase doParse(final JavaCCParser parser) throws ParsingException {
 		try {
 			parser.parse();
+		} catch (ParseException | PrefixDeclarationException | TokenMgrError e) {
+			LOGGER.error("Exception while parsing Knowledge Base!", e);
+			throw new ParsingException("Exception while parsing Knowledge Base.", e);
+		}
+
+		KnowledgeBase knowledgeBase = parser.getKnowledgeBase();
+		knowledgeBase.mergePrefixDeclarations(parser.getPrefixDeclarationRegistry());
+
+		return knowledgeBase;
+	}
+
+	static KnowledgeBase doParseAsp(final JavaCCParser parser) throws ParsingException {
+		try {
+			parser.parseAsp();
 		} catch (ParseException | PrefixDeclarationException | TokenMgrError e) {
 			LOGGER.error("Exception while parsing Knowledge Base!", e);
 			throw new ParsingException("Exception while parsing Knowledge Base.", e);
