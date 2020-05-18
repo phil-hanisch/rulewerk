@@ -23,15 +23,12 @@ package org.semanticweb.rulewerk.core.model.implementation;
 import java.util.Collections;
 import java.util.List;
 
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.Validate;
-import org.semanticweb.rulewerk.core.model.api.Literal;
-import org.semanticweb.rulewerk.core.model.api.Conjunction;
-import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
-import org.semanticweb.rulewerk.core.model.api.Predicate;
-import org.semanticweb.rulewerk.core.model.api.Term;
-import org.semanticweb.rulewerk.core.model.api.ChoiceElement;
+import org.semanticweb.rulewerk.core.model.api.*;
 
 /**
  * ...
@@ -103,4 +100,8 @@ public class ChoiceElementImpl implements ChoiceElement {
 		return Stream.concat(this.literal.getTerms(), this.context.getTerms()).distinct();
 	}
 
+	@Override
+	public String ground(Set<Predicate> approximatedPredicates, Map<Variable, Term> map) {
+		return this.literal.getSyntacticRepresentation(map) + " : " + this.context.ground(approximatedPredicates, map);
+	}
 }

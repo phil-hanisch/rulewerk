@@ -7,6 +7,7 @@ import org.semanticweb.rulewerk.core.reasoner.Reasoner;
 
 import java.io.FileWriter;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -57,13 +58,6 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	Conjunction<Literal> getBody();
 
 	/**
-	 * Returns true if the rule is a choice rule.
-	 *
-	 * @return whether the rule is a choice rule
-	 */
-	boolean isChoiceRule();
-
-	/**
 	 * Returns true if the rule can only be approximated
 	 *
 	 * @return whether the rule requires approximation
@@ -78,13 +72,21 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	List<Rule> getApproximation();
 
 	/**
-	 * Write all instances of the rule via the given writer
+	 * Accept a {@link AspRuleVisitor} and return its output.
 	 *
-	 * @param reasoner the reasoner where the facts has been materialised
-	 * @param approximatedPredicates a set of approximated predicates
-	 * @param writer a file writer to write the grounded rules
+	 * @param aspRuleVisitor the AspRuleVisitor
+	 * @return output of the visitor
 	 */
-	void groundRule(Reasoner reasoner, Set<Predicate> approximatedPredicates, FileWriter writer);
+	<T> T accept(AspRuleVisitor<T> aspRuleVisitor);
+
+	/**
+	 * Get the grounding of the rule for the given instance
+	 *
+	 * @param approximatedPredicates set of approximated predicates
+	 * @param answerMap contains a term for each variable
+	 * @return the grounding of the rule
+	 */
+	String ground(Set<Predicate> approximatedPredicates, Map<Variable, Term> answerMap);
 
 	/**
 	 * Get the unique rule index
@@ -96,34 +98,6 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	@Override
 	default String getSyntacticRepresentation() {
 		return Serializer.getString(this);
-	}
-
-	/**
-	 * Gets the template String for the rule body
-	 *
-	 * @param approximatedPredicates a set of approximated predicates
-	 * @return the template String for the body
-	 */
-	default String getBodyTemplate(Set<Predicate> approximatedPredicates) {
-		StringBuilder builder = new StringBuilder();
-		boolean first = true;
-		for (Literal literal : this.getBody()) {
-			// ignore save predicates
-			if (!approximatedPredicates.contains(literal.getPredicate())) {
-				continue;
-			}
-
-			if (first) {
-				builder.append(" :- ");
-				first = false;
-			} else {
-				builder.append(", ");
-			}
-
-			builder.append(literal.getSyntacticRepresentation().replace("~", "not "));
-		}
-
-		return builder.toString();
 	}
 
 	/**

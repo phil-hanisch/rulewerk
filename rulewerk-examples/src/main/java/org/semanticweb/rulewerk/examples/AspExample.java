@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.semanticweb.rulewerk.core.model.implementation.Grounder;
 import org.semanticweb.rulewerk.core.reasoner.KnowledgeBase;
 import org.semanticweb.rulewerk.core.reasoner.LogLevel;
 import org.semanticweb.rulewerk.core.reasoner.Reasoner;
@@ -111,6 +112,7 @@ public class AspExample {
 
 			/* Construct grounded knowledge base */
 			FileWriter fileWriter = new FileWriter(ExamplesUtils.OUTPUT_FOLDER + "grounding_text.lp");
+			Grounder grounder = new Grounder(reasoner, fileWriter, approximatedPredicates);
 
 			for (Fact fact : kb.getFacts()) {
 				try {
@@ -123,7 +125,7 @@ public class AspExample {
 
 			for (AspRule rule : kb.getAspRules()) {
 				System.out.println(rule);
-				rule.groundRule(reasoner, approximatedPredicates, fileWriter);
+				rule.accept(grounder);
 			}
 
 			fileWriter.close();

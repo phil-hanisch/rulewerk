@@ -13,9 +13,9 @@ import java.util.List;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,7 +30,7 @@ import java.util.List;
  * specifying quantifiers. All variables in the body are considered universally
  * quantified; all variables in the head that do not occur in the body are
  * considered existentially quantified.
- * 
+ *
  * @author Philipp Hanisch
  *
  */
@@ -40,11 +40,6 @@ public interface ChoiceRule extends AspRule {
 	 * Returns a list of choice elements that occur in the head of the rule
 	 */
 	List<ChoiceElement> getChoiceElements();
-
-	@Override
-	default boolean isChoiceRule() {
-		return true;
-	};
 
 	@Override
 	default boolean requiresApproximation() {

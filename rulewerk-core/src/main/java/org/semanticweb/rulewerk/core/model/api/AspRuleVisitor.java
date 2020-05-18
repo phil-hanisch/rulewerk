@@ -20,32 +20,37 @@ package org.semanticweb.rulewerk.core.model.api;
  * #L%
  */
 
-import java.util.Map;
-
 /**
- * Interface for every parsable data model that has a string representation
+ * A visitor for the various types of {@link AspRule}s in the data model.
+ * Should be used to avoid any type casting or {@code instanceof} checks when
+ * processing asp rules.
  *
- * @author Ali Elhalawati
- *
+ * @author Philipp Hanisch
  */
-public interface Entity {
-	/**
-	 * Returns the parsable string representation of an Entity.
-	 *
-	 * @return non-empty String
-	 */
-	String getSyntacticRepresentation();
+public interface AspRuleVisitor<T> {
 
 	/**
-	 * Returns the parsable string representation of an Entity while replacing variables.
+	 * Visits a {@link ChoiceRule} and returns a result.
 	 *
-	 * @return non-empty String
+	 * @param rule the rule to visit
+	 * @return some result
 	 */
-	default String getSyntacticRepresentation(Map<Variable, Term> map) {
-		String representation = getSyntacticRepresentation();
-		for (Variable variable : map.keySet()) {
-			representation = representation.replaceAll(variable.getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), map.get(variable).getSyntacticRepresentation());
-		}
-		return representation;
-	}
+	T visit(ChoiceRule rule);
+
+	/**
+	 * Visits a {@link Constraint} and returns a result.
+	 *
+	 * @param rule the rule to visit
+	 * @return some result
+	 */
+	T visit(Constraint rule);
+
+	/**
+	 * Visits a {@link DisjunctiveRule} and returns a result.
+	 *
+	 * @param rule the rule to visit
+	 * @return some result
+	 */
+	T visit(DisjunctiveRule rule);
+
 }

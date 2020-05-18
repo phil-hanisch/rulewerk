@@ -28,17 +28,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 import org.apache.commons.lang3.Validate;
-import org.semanticweb.rulewerk.core.model.api.Conjunction;
-import org.semanticweb.rulewerk.core.model.api.Literal;
-import org.semanticweb.rulewerk.core.model.api.Predicate;
-import org.semanticweb.rulewerk.core.model.api.Rule;
-import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
-import org.semanticweb.rulewerk.core.model.api.ChoiceRule;
-import org.semanticweb.rulewerk.core.model.api.ChoiceElement;
-import org.semanticweb.rulewerk.core.model.api.StatementVisitor;
-import org.semanticweb.rulewerk.core.model.api.Term;
-import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
-import org.semanticweb.rulewerk.core.model.api.QueryResult;
+import org.semanticweb.rulewerk.core.model.api.*;
 import org.semanticweb.rulewerk.core.reasoner.Reasoner;
 import org.semanticweb.rulewerk.core.reasoner.QueryResultIterator;
 
@@ -165,74 +155,21 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	}
 
 	@Override
-	public void groundRule(Reasoner reasoner, Set<Predicate> approximatedPredicates, FileWriter writer) {
-		List<Term> terms = this.body.getUniversalVariables().collect(Collectors.toList());
-		PositiveLiteral literal = getHelperLiteral();
-
-		try (final QueryResultIterator answers = reasoner.answerQuery(literal, true)) {
-			// each query result represents a grounding (= grounding of the global variables)
-			while(answers.hasNext()) {
-				QueryResult answer = answers.next();
-				String[] answerTerms = answer.getTerms().stream().map(Term::getSyntacticRepresentation).toArray(String[]::new);
-
-				StringBuilder builder = new StringBuilder();
-				builder.append("{ ");
-				boolean first = true;
-				int i = 0;
-				// each choice element contributes individual grounded elements
-				for (ChoiceElement choiceElement : this.head) {
-					List<Term> contextTerms = Stream.concat(answer.getTerms().stream(), choiceElement.getContext().getUniversalVariables().filter(variable -> !terms.contains(variable)))
-													.distinct().collect(Collectors.toList());
-					Predicate predicate = new PredicateImpl("rule_" + this.ruleIdx + "_" + i, contextTerms.size());
-					literal = new PositiveLiteralImpl(predicate, contextTerms);
-					final QueryResultIterator elementAnswers = reasoner.answerQuery(literal, true);
-
-					String elementTemplate = choiceElement.getLiteral().getSyntacticRepresentation() +
-						" : " +
-						choiceElement.getContext().getSyntacticRepresentation();
-
-					// each query result represents a grounded choice element in the head (= grounding of the local variables)
-					while(elementAnswers.hasNext()) {
-						String[] elementAnswerTerms = elementAnswers.next().getTerms().stream().map(Term::getSyntacticRepresentation).toArray(String[]::new);
-
-						if (first) {
-							first = false;
-						} else {
-							builder.append("; ");
-						}
-
-						Iterator<UniversalVariable> iterator = Stream.concat(this.getBody().getUniversalVariables(), choiceElement.getContext().getUniversalVariables()).distinct().iterator();
-						int argIdx = 1;
-						while (iterator.hasNext()) {
-							elementTemplate = elementTemplate.replaceAll(iterator.next().getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), "\\%" + argIdx + "\\$s");
-							argIdx++;
-						}
-
-						builder.append(String.format(elementTemplate, elementAnswerTerms));
-					}
-				}
-
-				builder.append(" }");
-
-				// replace variable names in the body with placeholders
-				String bodyTemplate = this.getBodyTemplate(approximatedPredicates);
-				Iterator<UniversalVariable> iterator = this.body.getUniversalVariables().iterator();
-				int argIdx = 1;
-				while (iterator.hasNext()) {
-					bodyTemplate = bodyTemplate.replaceAll(iterator.next().getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), "\\%" + argIdx + "\\$s");
-					argIdx++;
-				}
-				builder.append(String.format(bodyTemplate, answerTerms));
-
-				builder.append(" .\n");
-				try {
-					writer.write(builder.toString());
-				} catch (IOException e) {
-					System.out.println("An error occurred.");
-					e.printStackTrace();
-				}
+	public String ground(Set<Predicate> approximatedPredicates, Map<Variable, Term> answerMap) {
+		StringBuilder builder = new StringBuilder();
+		builder.append("{ ");
+		for (int i=0; i<this.getChoiceElements().size(); i++) {
+			if (i != 0) {
+				builder.append("; ");
 			}
+			builder.append("%").append(i + 1).append("$s");
 		}
+		builder.append(" }");
+
+		builder.append(" :- ");
+		builder.append(this.body.ground(approximatedPredicates, answerMap));
+		builder.append(" .\n");
+		return builder.toString();
 	}
 
 	@Override
@@ -243,5 +180,10 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	@Override
 	public Stream<Term> getTerms() {
 		return Stream.concat(this.body.getTerms(), this.head.stream().flatMap(ChoiceElement::getTerms)).distinct();
+	}
+
+	@Override
+	public <T> T accept(AspRuleVisitor<T> aspRuleVisitor) {
+		return aspRuleVisitor.visit(this);
 	}
 }

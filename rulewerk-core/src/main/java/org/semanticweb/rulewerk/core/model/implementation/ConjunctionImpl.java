@@ -20,16 +20,11 @@ package org.semanticweb.rulewerk.core.model.implementation;
  * #L%
  */
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.Validate;
-import org.semanticweb.rulewerk.core.model.api.Conjunction;
-import org.semanticweb.rulewerk.core.model.api.Literal;
-import org.semanticweb.rulewerk.core.model.api.Term;
+import org.semanticweb.rulewerk.core.model.api.*;
 
 /**
  * Simple implementation of {@link Conjunction}.
@@ -91,4 +86,24 @@ public class ConjunctionImpl<T extends Literal> implements Conjunction<T> {
 		return getSyntacticRepresentation();
 	}
 
+	@Override
+	public String ground(Set<Predicate> approximatedPredicates, Map<Variable, Term> answerMap) {
+		StringBuilder builder = new StringBuilder();
+		boolean first = true;
+		for (Literal literal : this.getLiterals()) {
+			if (!approximatedPredicates.contains(literal.getPredicate())) {
+				continue;
+			}
+
+			if (first) {
+				first = false;
+			} else {
+				builder.append(", ");
+			}
+
+			builder.append(literal.getSyntacticRepresentation(answerMap).replace("~", "not "));
+		}
+
+		return builder.toString();
+	}
 }
