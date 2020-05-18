@@ -9,9 +9,9 @@ package org.semanticweb.rulewerk.examples;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -61,20 +61,19 @@ import org.semanticweb.rulewerk.core.model.implementation.ConjunctionImpl;
  * different sources (RDF file, SPARQL), and reason about these inputs using
  * rules that are loaded from a file. The rules used here employ existential
  * quantifiers and stratified negation.
- * 
- * @author 
+ *
+ * @author Philipp Hanisch
  */
 public class AspExample {
 
 	public static void main(final String[] args) throws IOException, ParsingException {
 		ExamplesUtils.configureLogging();
 
-		/**
-		 * Load rules and facts from asp file
-		 */
+		// Load rules and facts from asp file
 		KnowledgeBase kb;
 		try {
 			kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/crossword.rls"));
+			// kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/colouring-encoding.rls"));
 		} catch (final ParsingException e) {
 			System.out.println("Failed to parse rules: " + e.getMessage());
 			return;
@@ -83,49 +82,18 @@ public class AspExample {
 		kb.getAspRules().forEach(System.out::println);
 		System.out.println("");
 
-		System.out.println("Facts used in this example:");
-		kb.getFacts().forEach(System.out::println);
+		// System.out.println("Facts used in this example:");
+		// kb.getFacts().forEach(System.out::println);
+		// System.out.println("");
+
+		// Analyse rule structure
+		Set<Predicate> approximatedPredicates = kb.analyseAspRulesForApproximatedPredicates();
+
+		System.out.println("Approximated predicates");
+		approximatedPredicates.forEach(System.out::println);
 		System.out.println("");
 
-		/**
-		 * Analyse rule structure
-		 */
-		Set<Predicate> unsafePredicates = new HashSet<Predicate>();
-		Map<Predicate, Set<Predicate>> dependencyMap = new HashMap<Predicate, Set<Predicate>>();
-		for (AspRule rule : kb.getAspRules()) {
-			for (Literal literal : rule.getHeadLiterals()) {
-				Predicate pred = literal.getPredicate();
-				if (rule.requiresApproximation()) {
-					unsafePredicates.add(pred);
-				}
-
-				if (!dependencyMap.containsKey(pred)) {
-					dependencyMap.put(pred, new HashSet<Predicate>());
-				}
-
-				Set<Predicate> dependencies = dependencyMap.get(pred);
-				dependencies.addAll(rule.getBody().getLiterals().stream().map(Literal::getPredicate).collect(Collectors.toList()));
-			}
-		}
-
-		boolean changed = unsafePredicates.size() > 0;
-		while (changed) {
-			changed = false;
-			for (Predicate pred : dependencyMap.keySet()) {
-				if (!unsafePredicates.contains(pred) && dependencyMap.get(pred).stream().anyMatch(unsafePredicates::contains)) {
-					unsafePredicates.add(pred);
-					changed = true;
-				}
-			}
-		}
-
-		System.out.println("Unsafe predicates");
-		unsafePredicates.forEach(System.out::println);
-		System.out.println("");
-
-		/**
-		 * Transform asp rules into standard rules 
-		 */
+		// Transform asp rules into standard rules
 		for (AspRule rule : kb.getAspRules()) {
 			kb.addStatements(rule.getApproximation());
 		}
@@ -155,7 +123,7 @@ public class AspExample {
 
 			for (AspRule rule : kb.getAspRules()) {
 				System.out.println(rule);
-				rule.groundRule(reasoner, unsafePredicates, fileWriter);
+				rule.groundRule(reasoner, approximatedPredicates, fileWriter);
 			}
 
 			fileWriter.close();
@@ -211,7 +179,7 @@ public class AspExample {
 		try {
 			FileWriter fileWriter = new FileWriter(fileName);
 			for (Fact fact : kb.getFacts()) {
-				fileWriter.write(getAspRepresentation(fact));				
+				fileWriter.write(getAspRepresentation(fact));
 			}
 			for (Rule rule : kb.getRules()) {
 				fileWriter.write(getAspRepresentation(rule));

@@ -44,7 +44,7 @@ public class PredicateImpl implements Predicate {
 	 */
 	public PredicateImpl(final String name, int arity) {
 		Validate.notBlank(name, "Predicates cannot be named by blank Strings.");
-		Validate.isTrue(arity > 0, "Predicate arity must be greater than zero: %d", arity);
+		Validate.isTrue(arity > 0, "Predicate arity must be greater than zero: %d (%s)", arity, name);
 
 		this.name = name;
 		this.arity = arity;

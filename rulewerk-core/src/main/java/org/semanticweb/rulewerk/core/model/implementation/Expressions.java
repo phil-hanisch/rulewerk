@@ -36,6 +36,7 @@ import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
 import org.semanticweb.rulewerk.core.model.api.Predicate;
 import org.semanticweb.rulewerk.core.model.api.ChoiceElement;
 import org.semanticweb.rulewerk.core.model.api.Rule;
+import org.semanticweb.rulewerk.core.model.api.Constraint;
 import org.semanticweb.rulewerk.core.model.api.ChoiceRule;
 import org.semanticweb.rulewerk.core.model.api.DisjunctiveRule;
 import org.semanticweb.rulewerk.core.model.api.Term;
@@ -370,6 +371,16 @@ public final class Expressions {
 	 */
 	public static DisjunctiveRule makeDisjunctiveRule(final Conjunction<PositiveLiteral> head, final Conjunction<Literal> body) {
 		return new DisjunctiveRuleImpl(head, body, ruleCounter++);
+	}
+
+	/**
+	 * Creates a {@code Constraint}.
+	 *
+	 * @param body conjunction of literals (negated or not)
+	 * @return a {@link Constraint} corresponding to the input
+	 */
+	public static Constraint makeConstraint(final Conjunction<Literal> body) {
+		return new ConstraintImpl(body, ruleCounter++);
 	}
 
 	/**

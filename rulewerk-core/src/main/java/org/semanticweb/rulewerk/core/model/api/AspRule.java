@@ -1,11 +1,14 @@
 package org.semanticweb.rulewerk.core.model.api;
 
+import org.semanticweb.rulewerk.core.model.implementation.PositiveLiteralImpl;
+import org.semanticweb.rulewerk.core.model.implementation.PredicateImpl;
 import org.semanticweb.rulewerk.core.model.implementation.Serializer;
 import org.semanticweb.rulewerk.core.reasoner.Reasoner;
 
 import java.io.FileWriter;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /*-
  * #%L
@@ -16,9 +19,9 @@ import java.util.Set;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,7 +36,7 @@ import java.util.Set;
  * specifying quantifiers. All variables in the body are considered universally
  * quantified; all variables in the head that do not occur in the body are
  * considered existentially quantified.
- * 
+ *
  * @author Philipp Hanisch
  *
  */
@@ -70,7 +73,7 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	/**
 	 * Returns a list of rules that approximate the (asp) rule by plain datalog rules
 	 *
-	 * @return list of rules 
+	 * @return list of rules
 	 */
 	List<Rule> getApproximation();
 
@@ -82,6 +85,13 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	 * @param writer a file writer to write the grounded rules
 	 */
 	void groundRule(Reasoner reasoner, Set<Predicate> approximatedPredicates, FileWriter writer);
+
+	/**
+	 * Get the unique rule index
+	 *
+	 * @return the rule index
+	 */
+	int getRuleIdx();
 
 	@Override
 	default String getSyntacticRepresentation() {
@@ -114,5 +124,33 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 		}
 
 		return builder.toString();
+	}
+
+	/**
+	 * Construct a helper literal
+	 *
+	 * @return a positive helper literal
+	 */
+	default PositiveLiteral getHelperLiteral() {
+		String predicateName = "rule_" + this.getRuleIdx();
+		List<Term> terms = this.getBody().getUniversalVariables().collect(Collectors.toList());
+		Predicate predicate = new PredicateImpl(predicateName, terms.size());
+		return new PositiveLiteralImpl(predicate, terms);
+	}
+
+	/**
+	 * Construct a helper literal based on the given terms and indices
+	 *
+	 * @param terms the relevant variables
+	 * @param indices a list of indices
+	 * @return a positive helper literal
+	 */
+	default PositiveLiteral getHelperLiteral(List<Term> terms, int... indices) {
+		StringBuilder predicateName = new StringBuilder("rule");
+		for (int i : indices) {
+			predicateName.append("_" + i);
+		}
+		Predicate predicate = new PredicateImpl(predicateName.toString(), terms.size());
+		return new PositiveLiteralImpl(predicate, terms);
 	}
 }

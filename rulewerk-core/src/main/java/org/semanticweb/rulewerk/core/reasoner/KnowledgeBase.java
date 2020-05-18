@@ -37,19 +37,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.Validate;
 import org.semanticweb.rulewerk.core.exceptions.PrefixDeclarationException;
 import org.semanticweb.rulewerk.core.exceptions.RulewerkException;
-import org.semanticweb.rulewerk.core.model.api.DataSourceDeclaration;
-import org.semanticweb.rulewerk.core.model.api.Fact;
-import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
-import org.semanticweb.rulewerk.core.model.api.Predicate;
-import org.semanticweb.rulewerk.core.model.api.PrefixDeclarationRegistry;
-import org.semanticweb.rulewerk.core.model.api.Rule;
-import org.semanticweb.rulewerk.core.model.api.AspRule;
-import org.semanticweb.rulewerk.core.model.api.Statement;
-import org.semanticweb.rulewerk.core.model.api.StatementVisitor;
+import org.semanticweb.rulewerk.core.model.api.*;
 import org.semanticweb.rulewerk.core.model.implementation.MergingPrefixDeclarationRegistry;
 import org.semanticweb.rulewerk.core.model.implementation.Serializer;
 
@@ -626,5 +619,47 @@ public class KnowledgeBase implements Iterable<Statement> {
 		try (OutputStream stream = new FileOutputStream(filePath)) {
 			writeKnowledgeBase(stream);
 		}
+	}
+
+	/**
+	 * Analyse the KnowledgeBase to find all predicates used in asp rules
+	 * that are approximated.
+	 *
+	 * @return the set of predicates that are approximated
+	 */
+	public Set<Predicate> analyseAspRulesForApproximatedPredicates() {
+		Set<Predicate> approximatedPredicates = new HashSet<>();
+		Map<Predicate, Set<Predicate>> dependencyMap = new HashMap<>();
+
+		// get the initially approximated predicates as well as the direct dependencies
+		for (AspRule rule : this.getAspRules()) {
+			for (Literal literal : rule.getHeadLiterals()) {
+				Predicate predicate = literal.getPredicate();
+				if (rule.requiresApproximation()) {
+					approximatedPredicates.add(predicate);
+				}
+
+				if (!dependencyMap.containsKey(predicate)) {
+					dependencyMap.put(predicate, new HashSet<Predicate>());
+				}
+
+				Set<Predicate> dependencies = dependencyMap.get(predicate);
+				dependencies.addAll(rule.getBody().getLiterals().stream().map(Literal::getPredicate).collect(Collectors.toList()));
+			}
+		}
+
+		// as long as a new predicate is marked as approximated, mark all predicates as approximated that use it
+		boolean changed = approximatedPredicates.size() > 0;
+		while (changed) {
+			changed = false;
+			for (Predicate predicate : dependencyMap.keySet()) {
+				if (!approximatedPredicates.contains(predicate) && dependencyMap.get(predicate).stream().anyMatch(approximatedPredicates::contains)) {
+					approximatedPredicates.add(predicate);
+					changed = true;
+				}
+			}
+		}
+
+		return approximatedPredicates;
 	}
 }

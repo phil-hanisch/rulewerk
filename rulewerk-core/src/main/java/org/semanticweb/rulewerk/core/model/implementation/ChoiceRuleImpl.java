@@ -1,5 +1,6 @@
 package org.semanticweb.rulewerk.core.model.implementation;
 
+import java.util.*;
 import java.util.stream.Collectors;
 
 /*-
@@ -11,9 +12,9 @@ import java.util.stream.Collectors;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,11 +24,6 @@ import java.util.stream.Collectors;
  */
 
 import java.util.stream.Stream;
-import java.util.List;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.io.FileWriter;
 import java.io.IOException;
 
@@ -48,7 +44,7 @@ import org.semanticweb.rulewerk.core.reasoner.QueryResultIterator;
 
 /**
  * Implementation for {@link ChoiceRule}. Represents asp choice rule.
- * 
+ *
  * @author Philipp Hanisch
  *
  */
@@ -57,7 +53,7 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	final Conjunction<Literal> body;
 	final List<ChoiceElement> head;
 	final int ruleIdx;
-	
+
 	/**
 	 * Creates a Rule with a (possibly empty) body and an non-empty head. All variables in
 	 * the body must be universally quantified; all variables in the head that do
@@ -77,7 +73,7 @@ public class ChoiceRuleImpl implements ChoiceRule {
 			throw new IllegalArgumentException(
 					"Rule body cannot contain existential variables. Rule was: " + head + " :- " + body);
 		}
-		Set<UniversalVariable> bodyVariables = body.getUniversalVariables().collect(Collectors.toSet());
+		// Set<UniversalVariable> bodyVariables = body.getUniversalVariables().collect(Collectors.toSet());
 		// if (head.getUniversalVariables().filter(x -> !bodyVariables.contains(x)).count() > 0) {
 		// 	throw new IllegalArgumentException(
 		// 			"Universally quantified variables in rule head must also occur in rule body. Rule was: " + head
@@ -121,7 +117,7 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	@Override
 	public Conjunction<PositiveLiteral> getHeadLiterals() {
 		List<PositiveLiteral> literals = this.getChoiceElements().stream().map(ChoiceElement::getLiteral).collect(Collectors.toList());
-		return new ConjunctionImpl<PositiveLiteral>(literals);
+		return new ConjunctionImpl<>(literals);
 	}
 
 	@Override
@@ -132,34 +128,35 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	@Override
 	public List<ChoiceElement> getChoiceElements() {
 		return this.head;
-	};
+	}
+
+	@Override
+	public int getRuleIdx() {
+		return this.ruleIdx;
+	}
 
 	@Override
 	public List<Rule> getApproximation() {
-		List<Rule> list = new ArrayList<Rule>();
+		List<Rule> list = new ArrayList<>();
 
 		// add helper rule for grounding global variables
-		String predicateName = "rule_" + this.ruleIdx;
-		List<Term> terms = this.body.getUniversalVariables().collect(Collectors.toList());
-		Predicate predicate = new PredicateImpl(predicateName, terms.size());
-		PositiveLiteral literal = new PositiveLiteralImpl(predicate, terms);
-		Conjunction<PositiveLiteral> head = new ConjunctionImpl(Arrays.asList(literal));
+		PositiveLiteral literal = this.getHelperLiteral();
+		Conjunction<PositiveLiteral> head = new ConjunctionImpl<>(Collections.singletonList(literal));
 		list.add(new RuleImpl(head, this.body));
 
 		// add helper rule for grounding local variables (based on global variables)
 		int i = 0;
 		for (ChoiceElement choiceElement : this.head) {
 			Conjunction<Literal> context = choiceElement.getContext();
+			List<Term> terms = Stream.concat(this.body.getUniversalVariables(), context.getUniversalVariables()).distinct().collect(Collectors.toList());
+			literal = this.getHelperLiteral(terms, this.ruleIdx, i);
+			head = new ConjunctionImpl<>(Collections.singletonList(literal));
 
-			predicateName = "rule_" + this.ruleIdx + "_" + i;
-			terms = Stream.concat(this.body.getUniversalVariables(), context.getUniversalVariables()).distinct().collect(Collectors.toList());
-			predicate = new PredicateImpl(predicateName, terms.size());
-			literal = new PositiveLiteralImpl(predicate, terms);
-			head = new ConjunctionImpl(Arrays.asList(literal));
+			List<Literal> bodyLiterals = new ArrayList<>(this.body.getLiterals());
+			bodyLiterals.addAll(context.getLiterals());
 
-			Conjunction<Literal> body = new ConjunctionImpl(this.body, context);
-			list.add(new RuleImpl(head, body));
-			list.add(new RuleImpl(new ConjunctionImpl(Arrays.asList(choiceElement.getLiteral())), new ConjunctionImpl(head.getLiterals())));
+			list.add(new RuleImpl(head, new ConjunctionImpl<>(bodyLiterals)));
+			list.add(new RuleImpl(new ConjunctionImpl<>(Collections.singletonList(choiceElement.getLiteral())), new ConjunctionImpl<>(head.getLiterals())));
 
 			i++;
 		}
@@ -169,16 +166,14 @@ public class ChoiceRuleImpl implements ChoiceRule {
 
 	@Override
 	public void groundRule(Reasoner reasoner, Set<Predicate> approximatedPredicates, FileWriter writer) {
-		String predicateName = "rule_" + this.ruleIdx;
 		List<Term> terms = this.body.getUniversalVariables().collect(Collectors.toList());
-		Predicate predicate = new PredicateImpl(predicateName, terms.size());
-		PositiveLiteral literal = new PositiveLiteralImpl(predicate, terms);
+		PositiveLiteral literal = getHelperLiteral();
 
 		try (final QueryResultIterator answers = reasoner.answerQuery(literal, true)) {
 			// each query result represents a grounding (= grounding of the global variables)
 			while(answers.hasNext()) {
 				QueryResult answer = answers.next();
-				String answerTerms[] = answer.getTerms().stream().map(term -> term.getSyntacticRepresentation()).toArray(String[]::new);
+				String[] answerTerms = answer.getTerms().stream().map(Term::getSyntacticRepresentation).toArray(String[]::new);
 
 				StringBuilder builder = new StringBuilder();
 				builder.append("{ ");
@@ -188,19 +183,17 @@ public class ChoiceRuleImpl implements ChoiceRule {
 				for (ChoiceElement choiceElement : this.head) {
 					List<Term> contextTerms = Stream.concat(answer.getTerms().stream(), choiceElement.getContext().getUniversalVariables().filter(variable -> !terms.contains(variable)))
 													.distinct().collect(Collectors.toList());
-					predicate = new PredicateImpl("rule_" + this.ruleIdx + "_" + i, contextTerms.size());
+					Predicate predicate = new PredicateImpl("rule_" + this.ruleIdx + "_" + i, contextTerms.size());
 					literal = new PositiveLiteralImpl(predicate, contextTerms);
 					final QueryResultIterator elementAnswers = reasoner.answerQuery(literal, true);
 
-					StringBuilder elementBuilder = new StringBuilder();
-					elementBuilder.append(choiceElement.getLiteral().getSyntacticRepresentation());
-					elementBuilder.append(" : ");
-					elementBuilder.append(choiceElement.getContext().getSyntacticRepresentation());
-					String elementTemplate = elementBuilder.toString();
+					String elementTemplate = choiceElement.getLiteral().getSyntacticRepresentation() +
+						" : " +
+						choiceElement.getContext().getSyntacticRepresentation();
 
 					// each query result represents a grounded choice element in the head (= grounding of the local variables)
 					while(elementAnswers.hasNext()) {
-						String elementAnswerTerms[] = elementAnswers.next().getTerms().stream().map(term -> term.getSyntacticRepresentation()).toArray(String[]::new);
+						String[] elementAnswerTerms = elementAnswers.next().getTerms().stream().map(Term::getSyntacticRepresentation).toArray(String[]::new);
 
 						if (first) {
 							first = false;
@@ -211,7 +204,7 @@ public class ChoiceRuleImpl implements ChoiceRule {
 						Iterator<UniversalVariable> iterator = Stream.concat(this.getBody().getUniversalVariables(), choiceElement.getContext().getUniversalVariables()).distinct().iterator();
 						int argIdx = 1;
 						while (iterator.hasNext()) {
-							elementTemplate = elementTemplate.replaceAll(iterator.next().getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), "\\%" + String.valueOf(argIdx) + "\\$s");
+							elementTemplate = elementTemplate.replaceAll(iterator.next().getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), "\\%" + argIdx + "\\$s");
 							argIdx++;
 						}
 
@@ -226,21 +219,21 @@ public class ChoiceRuleImpl implements ChoiceRule {
 				Iterator<UniversalVariable> iterator = this.body.getUniversalVariables().iterator();
 				int argIdx = 1;
 				while (iterator.hasNext()) {
-					bodyTemplate = bodyTemplate.replaceAll(iterator.next().getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), "\\%" + String.valueOf(argIdx) + "\\$s");
+					bodyTemplate = bodyTemplate.replaceAll(iterator.next().getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), "\\%" + argIdx + "\\$s");
 					argIdx++;
 				}
 				builder.append(String.format(bodyTemplate, answerTerms));
-				
+
 				builder.append(" .\n");
 				try {
-					writer.write(builder.toString());					
+					writer.write(builder.toString());
 				} catch (IOException e) {
 					System.out.println("An error occurred.");
 					e.printStackTrace();
 				}
 			}
 		}
-	};
+	}
 
 	@Override
 	public <T> T accept(StatementVisitor<T> statementVisitor) {
@@ -249,6 +242,6 @@ public class ChoiceRuleImpl implements ChoiceRule {
 
 	@Override
 	public Stream<Term> getTerms() {
-		return Stream.concat(this.body.getTerms(), this.head.stream().flatMap(elem -> elem.getTerms())).distinct();
+		return Stream.concat(this.body.getTerms(), this.head.stream().flatMap(ChoiceElement::getTerms)).distinct();
 	}
 }

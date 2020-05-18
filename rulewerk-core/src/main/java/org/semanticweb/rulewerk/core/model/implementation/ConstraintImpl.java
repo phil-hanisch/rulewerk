@@ -1,6 +1,7 @@
 package org.semanticweb.rulewerk.core.model.implementation;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /*-
  * #%L
@@ -32,63 +33,51 @@ import org.semanticweb.rulewerk.core.model.api.Literal;
 import org.semanticweb.rulewerk.core.model.api.Predicate;
 import org.semanticweb.rulewerk.core.model.api.Rule;
 import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
-import org.semanticweb.rulewerk.core.model.api.DisjunctiveRule;
+import org.semanticweb.rulewerk.core.model.api.Constraint;
 import org.semanticweb.rulewerk.core.model.api.StatementVisitor;
 import org.semanticweb.rulewerk.core.model.api.Term;
 import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
+import org.semanticweb.rulewerk.core.model.api.QueryResult;
 import org.semanticweb.rulewerk.core.reasoner.Reasoner;
 import org.semanticweb.rulewerk.core.reasoner.QueryResultIterator;
 
 /**
- * Implementation for {@link Disjunctive}. Represents a disjunctive asp rule.
+ * Implementation for {@link Constraint}. Represents an asp constraint.
  *
  * @author Philipp Hanisch
  *
  */
-public class DisjunctiveRuleImpl implements DisjunctiveRule {
+public class ConstraintImpl implements Constraint {
 
 	final Conjunction<Literal> body;
-	final Conjunction<PositiveLiteral> head;
 	final int ruleIdx;
 
 	/**
-	 * Creates a Rule with a (possibly empty) body and an non-empty head. All variables in
-	 * the body must be universally quantified; all variables in the head that do
-	 * not occur in the body must be existentially quantified.
+	 * Creates a Rule with an empty head and an non-empty body. All variables in
+	 * the body must be universally quantified.
 	 *
-	 * @param head list of positive literals (non-negated) representing the rule
-	 *             head conjuncts.
 	 * @param body list of Literals (negated or non-negated) representing the rule
 	 *             body conjuncts.
+	 * @param ruleIdx the rule index to uniquely identify the rule
 	 */
-	public DisjunctiveRuleImpl(final Conjunction<PositiveLiteral> head, final Conjunction<Literal> body, final int ruleIdx) {
-		Validate.notNull(head);
+	public ConstraintImpl(final Conjunction<Literal> body, final int ruleIdx) {
 		Validate.notNull(body);
-		Validate.notEmpty(head.getLiterals(),
-				"Empty rule head not supported. To capture integrity constraints, use a dedicated predicate that represents a contradiction.");
+		Validate.notEmpty(body.getLiterals(),
+				"Empty rule body for constraints not supported");
 		if (body.getExistentialVariables().count() > 0) {
 			throw new IllegalArgumentException(
-					"Rule body cannot contain existential variables. Rule was: " + head + " :- " + body);
+					"Rule body cannot contain existential variables. Rule was: :- " + body);
 		}
-		// Set<UniversalVariable> bodyVariables = body.getUniversalVariables().collect(Collectors.toSet());
-		// if (head.getUniversalVariables().filter(x -> !bodyVariables.contains(x)).count() > 0) {
-		// 	throw new IllegalArgumentException(
-		// 			"Universally quantified variables in rule head must also occur in rule body. Rule was: " + head
-		// 					+ " :- " + body);
-		// }
+		Set<UniversalVariable> bodyVariables = body.getUniversalVariables().collect(Collectors.toSet());
 
-		this.head = head;
 		this.body = body;
 		this.ruleIdx = ruleIdx;
-		System.out.println(this);
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
-		int result = this.body.hashCode();
-		result = prime * result + this.head.hashCode();
-		return result;
+		return this.body.hashCode();
 	}
 
 	@Override
@@ -99,12 +88,12 @@ public class DisjunctiveRuleImpl implements DisjunctiveRule {
 		if (obj == null) {
 			return false;
 		}
-		if (!(obj instanceof DisjunctiveRule)) {
+		if (!(obj instanceof Constraint)) {
 			return false;
 		}
-		final DisjunctiveRule other = (DisjunctiveRule) obj;
+		final Constraint other = (Constraint) obj;
 
-		return this.head.equals(other.getHeadLiterals()) && this.body.equals(other.getBody());
+		return this.body.equals(other.getBody());
 	}
 
 	@Override
@@ -114,7 +103,7 @@ public class DisjunctiveRuleImpl implements DisjunctiveRule {
 
 	@Override
 	public Conjunction<PositiveLiteral> getHeadLiterals() {
-		return this.head;
+		return new ConjunctionImpl<>(new ArrayList<>());
 	}
 
 	@Override
@@ -129,17 +118,14 @@ public class DisjunctiveRuleImpl implements DisjunctiveRule {
 
 	@Override
 	public List<Rule> getApproximation() {
-		PositiveLiteral literal = this.getHelperLiteral();
-		List<Rule> list = new ArrayList<>();
-		list.add(new RuleImpl(new ConjunctionImpl<>(Collections.singletonList(literal)), this.body));
-		list.add(new RuleImpl(this.head, new ConjunctionImpl<>(Collections.singletonList(literal))));
-
-		return list;
+		PositiveLiteral literal = getHelperLiteral();
+		Conjunction<PositiveLiteral> conjunction = new ConjunctionImpl<>(Collections.singletonList(literal));
+		return Collections.singletonList(new RuleImpl(conjunction, this.body));
 	}
 
 	@Override
 	public void groundRule(Reasoner reasoner, Set<Predicate> approximatedPredicates, FileWriter writer) {
-		PositiveLiteral literal = this.getHelperLiteral();
+		PositiveLiteral literal = getHelperLiteral();
 		String template = this.getAspTemplate(approximatedPredicates);
 
 		try (final QueryResultIterator answers = reasoner.answerQuery(literal, true)) {
@@ -147,19 +133,14 @@ public class DisjunctiveRuleImpl implements DisjunctiveRule {
 			while(answers.hasNext()) {
 				String[] answerTerms = answers.next().getTerms().stream().map(Term::getSyntacticRepresentation).toArray(String[]::new);
 				try {
-					writer.write(String.format(template, answerTerms));
+					writer.write(String.format(template, (Object[]) answerTerms));
 				} catch (IOException e) {
 					System.out.println("An error occurred.");
 					e.printStackTrace();
 				}
 			}
 		}
-	}
-
-	@Override
-	public boolean requiresApproximation() {
-		return this.head.getLiterals().size() > 1;
-	}
+	};
 
 	@Override
 	public <T> T accept(StatementVisitor<T> statementVisitor) {
@@ -168,7 +149,7 @@ public class DisjunctiveRuleImpl implements DisjunctiveRule {
 
 	@Override
 	public Stream<Term> getTerms() {
-		return Stream.concat(this.body.getTerms(), this.head.getTerms()).distinct();
+		return this.body.getTerms();
 	}
 
 	/**
@@ -179,12 +160,13 @@ public class DisjunctiveRuleImpl implements DisjunctiveRule {
 	 * @return the template for grounding the rule based on facts
 	 */
 	private String getAspTemplate(Set<Predicate> approximatedPredicates) {
-		String template = this.head.getSyntacticRepresentation() +
-			this.getBodyTemplate(approximatedPredicates) + " .\n";
+
+		// replace predicate names with placeholders
+		String template = this.getBodyTemplate(approximatedPredicates) + " .\n";
 		Iterator<UniversalVariable> iterator = this.getUniversalVariables().iterator();
 		int i = 1;
 		while (iterator.hasNext()) {
-			template = template.replaceAll(iterator.next().getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), "\\%" + i + "\\$s");
+			template = template.replaceAll(iterator.next().getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), "\\%" + String.valueOf(i) + "\\$s");
 			i++;
 		}
 		System.out.println(template);

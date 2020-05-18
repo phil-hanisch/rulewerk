@@ -55,6 +55,7 @@ import org.semanticweb.rulewerk.core.model.api.Statement;
 import org.semanticweb.rulewerk.core.model.api.Rule;
 import org.semanticweb.rulewerk.core.model.api.ChoiceRule;
 import org.semanticweb.rulewerk.core.model.api.DisjunctiveRule;
+import org.semanticweb.rulewerk.core.model.api.Constraint;
 import org.semanticweb.rulewerk.core.model.api.Literal;
 import org.semanticweb.rulewerk.core.model.api.NegativeLiteral;
 import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
@@ -195,6 +196,7 @@ void aspStatement() throws PrefixDeclarationException : {
 } {
     ( statement = choiceRule() { addStatement(statement); }
 	| LOOKAHEAD(disjunctiveRule()) statement = disjunctiveRule() { addStatement(statement); }
+	| statement = constraint() { addStatement(statement); }
 	| statement = fact(FormulaContext.HEAD) { addStatement(statement); }
     | knowledgeBase = directive() { setKnowledgeBase(knowledgeBase); }
     )
@@ -327,6 +329,20 @@ List < PositiveLiteral > listOfDisjunctivePositiveLiterals(FormulaContext contex
 	}
 }
 
+Constraint constraint() throws PrefixDeclarationException : {
+    List < Literal > body;
+} {
+    < ARROW > body = listOfLiterals(FormulaContext.BODY) < DOT > {
+        // check that the intersection between headExiVars and BodyVars is empty
+        for (String variable : headExiVars) {
+          if (bodyVars.contains(variable))
+            throw new ParseException("Malformed rule :- " + body + "\nExistential variable " + variable + " also used in rule body.");
+        }
+
+        return Expressions.makeConstraint(Expressions.makeConjunction(body));
+    }
+}
+
 Fact fact(FormulaContext context) throws PrefixDeclarationException : {
     Token t;
     List < Term > terms;
@@ -345,7 +361,7 @@ NegativeLiteral negativeLiteral(FormulaContext context) throws PrefixDeclaration
     List < Term > terms;
     String predicateName;
 } {
-    < TILDE > predicateName = predicateName() < LPAREN > terms = listOfTerms(context) < RPAREN > {
+    (< TILDE > | < NOT > ) predicateName = predicateName() < LPAREN > terms = listOfTerms(context) < RPAREN > {
 		return Expressions.makeNegativeLiteral(predicateName, terms);
 	}
 }
@@ -629,7 +645,8 @@ TOKEN : {
 }
 
 < DEFAULT, BODY > TOKEN : {
-  < TILDE : "~" >
+    < TILDE : "~" >
+  | < NOT : "not " >
 }
 
 < ABSOLUTE_IRI > TOKEN : {

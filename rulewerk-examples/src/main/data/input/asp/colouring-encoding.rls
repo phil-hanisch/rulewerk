@@ -21,8 +21,8 @@ equal(?X, ?X) :- colour(?X) .
 % coloured(?X, blue) :- vertex(?X) .
 % achieved: every vertex is coloured
 
-fail(?X) :- coloured(?X, ?C1), coloured(?X, ?C2), ~equal(?C1, ?C2) .
+:- coloured(?X, ?C1), coloured(?X, ?C2), ~equal(?C1, ?C2) .
 % achieved: every vertex has only one colour
 
-fail(?X, ?Y) :- edge(?X,?Y), coloured(?X, ?C), coloured(?Y, ?C) .
+:- edge(?X,?Y), coloured(?X, ?C), coloured(?Y, ?C) .
 % achieved: vertices that are neighbours do not have the same colour
