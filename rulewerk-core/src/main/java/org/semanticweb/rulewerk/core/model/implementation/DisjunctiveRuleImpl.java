@@ -120,10 +120,10 @@ public class DisjunctiveRuleImpl implements DisjunctiveRule {
 	}
 
 	@Override
-	public List<Rule> getApproximation() {
+	public List<Rule> getApproximation(Set<Predicate> approximatedPredicates) {
 		PositiveLiteral literal = this.getHelperLiteral();
 		List<Rule> list = new ArrayList<>();
-		list.add(new RuleImpl(new ConjunctionImpl<>(Collections.singletonList(literal)), this.body));
+		list.add(new RuleImpl(new ConjunctionImpl<>(Collections.singletonList(literal)), this.body.getSimplifiedConjunction(approximatedPredicates, true)));
 		list.add(new RuleImpl(this.head, new ConjunctionImpl<>(Collections.singletonList(literal))));
 
 		return list;

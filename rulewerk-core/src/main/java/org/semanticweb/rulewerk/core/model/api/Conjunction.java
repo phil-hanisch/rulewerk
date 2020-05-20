@@ -43,6 +43,15 @@ public interface Conjunction<T extends Literal> extends Iterable<T>, SyntaxObjec
 	 */
 	List<T> getLiterals();
 
+	/**
+	 * Returns a conjunction without literals build from the given predicates
+	 * @param predicates set of predicates to remove from conjunction
+	 * @param keepPositive whether to keep the non-negated literals
+	 *
+	 * @return conjunction
+	 */
+	Conjunction<T> getSimplifiedConjunction(Set<Predicate> predicates, boolean keepPositive);
+
 	@Override
 	default String getSyntacticRepresentation() {
 		return Serializer.getString(this);

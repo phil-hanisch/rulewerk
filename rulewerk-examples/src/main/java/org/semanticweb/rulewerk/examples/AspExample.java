@@ -73,8 +73,8 @@ public class AspExample {
 		// Load rules and facts from asp file
 		KnowledgeBase kb;
 		try {
-			kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/crossword.rls"));
-			// kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/colouring-encoding.rls"));
+			kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/colouring-encoding.rls"));
+			// kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/crosswords.rls"));
 		} catch (final ParsingException e) {
 			System.out.println("Failed to parse rules: " + e.getMessage());
 			return;
@@ -96,7 +96,7 @@ public class AspExample {
 
 		// Transform asp rules into standard rules
 		for (AspRule rule : kb.getAspRules()) {
-			kb.addStatements(rule.getApproximation());
+			kb.addStatements(rule.getApproximation(approximatedPredicates));
 		}
 		System.out.println("Rules used in this example:");
 		kb.getRules().forEach(System.out::println);

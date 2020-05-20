@@ -126,13 +126,13 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	}
 
 	@Override
-	public List<Rule> getApproximation() {
+	public List<Rule> getApproximation(Set<Predicate> approximatedPredicates) {
 		List<Rule> list = new ArrayList<>();
 
 		// add helper rule for grounding global variables
 		PositiveLiteral literal = this.getHelperLiteral();
 		Conjunction<PositiveLiteral> head = new ConjunctionImpl<>(Collections.singletonList(literal));
-		list.add(new RuleImpl(head, this.body));
+		list.add(new RuleImpl(head, this.body.getSimplifiedConjunction(approximatedPredicates, true)));
 
 		// add helper rule for grounding local variables (based on global variables)
 		int i = 0;
@@ -145,7 +145,7 @@ public class ChoiceRuleImpl implements ChoiceRule {
 			List<Literal> bodyLiterals = new ArrayList<>(this.body.getLiterals());
 			bodyLiterals.addAll(context.getLiterals());
 
-			list.add(new RuleImpl(head, new ConjunctionImpl<>(bodyLiterals)));
+			list.add(new RuleImpl(head, (new ConjunctionImpl<>(bodyLiterals)).getSimplifiedConjunction(approximatedPredicates, true)));
 			list.add(new RuleImpl(new ConjunctionImpl<>(Collections.singletonList(choiceElement.getLiteral())), new ConjunctionImpl<>(head.getLiterals())));
 
 			i++;

@@ -623,39 +623,97 @@ public class KnowledgeBase implements Iterable<Statement> {
 
 	/**
 	 * Analyse the KnowledgeBase to find all predicates used in asp rules
-	 * that are approximated.
+	 * that are approximated, thereby being aware of negation.
 	 *
 	 * @return the set of predicates that are approximated
 	 */
 	public Set<Predicate> analyseAspRulesForApproximatedPredicates() {
-		Set<Predicate> approximatedPredicates = new HashSet<>();
-		Map<Predicate, Set<Predicate>> dependencyMap = new HashMap<>();
+		Set<Predicate> approximatedPredicates = new HashSet<>(); // set of approximated predicates
+		Map<Predicate, Set<Predicate>> directDependencyMap = new HashMap<>(); // contains direct dependencies of any kind
+		Map<Predicate, Set<Predicate>> negationDependencyMap = new HashMap<>(); // contains direct negative dependencies
 
-		// get the initially approximated predicates as well as the direct dependencies
+		// get the initial dependencies
 		for (AspRule rule : this.getAspRules()) {
 			for (Literal literal : rule.getHeadLiterals()) {
 				Predicate predicate = literal.getPredicate();
+
+				directDependencyMap.putIfAbsent(predicate, new HashSet<>());
+				negationDependencyMap.putIfAbsent(predicate, new HashSet<>());
+
 				if (rule.requiresApproximation()) {
 					approximatedPredicates.add(predicate);
 				}
 
-				if (!dependencyMap.containsKey(predicate)) {
-					dependencyMap.put(predicate, new HashSet<Predicate>());
+				for (Literal bodyLiteral : rule.getBody()) {
+					if (bodyLiteral.isNegated()) {
+						negationDependencyMap.get(predicate).add(bodyLiteral.getPredicate());
+					}
+					directDependencyMap.get(predicate).add(bodyLiteral.getPredicate());
 				}
-
-				Set<Predicate> dependencies = dependencyMap.get(predicate);
-				dependencies.addAll(rule.getBody().getLiterals().stream().map(Literal::getPredicate).collect(Collectors.toList()));
 			}
 		}
 
+		// used to compute the transitive closure
+		Map<Predicate, Set<Predicate>> dependencyMap = new HashMap<>(directDependencyMap);
+
+//		System.out.println("Intial approximated predicates");
+//		approximatedPredicates.forEach(System.out::println);
+//		System.out.println();
+//
+//		System.out.println("Direct dependencies");
+//		directDependencyMap.keySet().forEach(predicate -> {
+//			System.out.print(predicate);
+//			directDependencyMap.get(predicate).forEach(System.out::print);
+//			System.out.println();
+//		});
+//		System.out.println();
+
+		// compute the transitive dependencies
+		boolean done = false;
+		while (!done) {
+			done = true;
+			for (Predicate predicate : dependencyMap.keySet()) {
+				Set<Predicate> currentDependencies = dependencyMap.get(predicate);
+				Set<Predicate> newDependencies = new HashSet<>();
+				for (Predicate dependant : currentDependencies) {
+					newDependencies.addAll(dependencyMap.getOrDefault(dependant, Collections.emptySet()));
+				}
+				if (!currentDependencies.containsAll(newDependencies)) {
+					done = false;
+					currentDependencies.addAll(newDependencies);
+				}
+			}
+		}
+
+		// direct cycles with a negation edge requires approximation
+		for (Predicate predicate : negationDependencyMap.keySet()) {
+			if (approximatedPredicates.contains(predicate)) {
+				continue;
+			}
+			for (Predicate dependent : negationDependencyMap.get(predicate)) {
+				if (dependencyMap.get(dependent).contains(predicate)) {
+					approximatedPredicates.add(predicate);
+					break;
+				}
+			}
+		}
+
+//		System.out.println("Transitive Closure");
+//		dependencyMap.keySet().forEach(predicate -> {
+//			System.out.print(predicate);
+//			dependencyMap.get(predicate).forEach(System.out::print);
+//			System.out.println();
+//		});
+//		System.out.println();
+
 		// as long as a new predicate is marked as approximated, mark all predicates as approximated that use it
-		boolean changed = approximatedPredicates.size() > 0;
-		while (changed) {
-			changed = false;
+		done = approximatedPredicates.size() == 0;
+		while (!done) {
+			done = true;
 			for (Predicate predicate : dependencyMap.keySet()) {
 				if (!approximatedPredicates.contains(predicate) && dependencyMap.get(predicate).stream().anyMatch(approximatedPredicates::contains)) {
 					approximatedPredicates.add(predicate);
-					changed = true;
+					done = false;
 				}
 			}
 		}

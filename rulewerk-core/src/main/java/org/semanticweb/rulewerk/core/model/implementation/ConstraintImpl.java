@@ -106,10 +106,10 @@ public class ConstraintImpl implements Constraint {
 	}
 
 	@Override
-	public List<Rule> getApproximation() {
+	public List<Rule> getApproximation(Set<Predicate> approximatedPredicates) {
 		PositiveLiteral literal = getHelperLiteral();
 		Conjunction<PositiveLiteral> conjunction = new ConjunctionImpl<>(Collections.singletonList(literal));
-		return Collections.singletonList(new RuleImpl(conjunction, this.body));
+		return Collections.singletonList(new RuleImpl(conjunction, this.body.getSimplifiedConjunction(approximatedPredicates, true)));
 	}
 
 	@Override

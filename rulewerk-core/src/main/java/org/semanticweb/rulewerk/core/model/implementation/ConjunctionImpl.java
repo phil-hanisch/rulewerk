@@ -106,4 +106,15 @@ public class ConjunctionImpl<T extends Literal> implements Conjunction<T> {
 
 		return builder.toString();
 	}
+
+	@Override
+	public Conjunction<T> getSimplifiedConjunction(Set<Predicate> predicates, boolean keepPositive) {
+		List<T> literals = new ArrayList<>();
+		for (T literal : this.getLiterals()) {
+			if ((keepPositive && !literal.isNegated()) || !predicates.contains(literal.getPredicate())) {
+				literals.add(literal);
+			}
+		}
+		return new ConjunctionImpl<>(literals);
+	}
 }

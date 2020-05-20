@@ -26,3 +26,5 @@ equal(?X, ?X) :- colour(?X) .
 
 :- edge(?X,?Y), coloured(?X, ?C), coloured(?Y, ?C) .
 % achieved: vertices that are neighbours do not have the same colour
+
+A(?X) :- C(?X, ?Y), not A(?Y) .

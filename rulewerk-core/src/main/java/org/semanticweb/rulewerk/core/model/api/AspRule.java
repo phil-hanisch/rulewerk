@@ -66,10 +66,11 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 
 	/**
 	 * Returns a list of rules that approximate the (asp) rule by plain datalog rules
+	 * @param approximatedPredicates set of approximated predicates
 	 *
 	 * @return list of rules
 	 */
-	List<Rule> getApproximation();
+	List<Rule> getApproximation(Set<Predicate> approximatedPredicates);
 
 	/**
 	 * Accept a {@link AspRuleVisitor} and return its output.
@@ -122,7 +123,7 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	default PositiveLiteral getHelperLiteral(List<Term> terms, int... indices) {
 		StringBuilder predicateName = new StringBuilder("rule");
 		for (int i : indices) {
-			predicateName.append("_" + i);
+			predicateName.append("_").append(i);
 		}
 		Predicate predicate = new PredicateImpl(predicateName.toString(), terms.size());
 		return new PositiveLiteralImpl(predicate, terms);
