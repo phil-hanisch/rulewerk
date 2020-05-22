@@ -68,13 +68,15 @@ import org.semanticweb.rulewerk.core.model.implementation.ConjunctionImpl;
 public class AspExample {
 
 	public static void main(final String[] args) throws IOException, ParsingException {
+		boolean textFormat = false;
+
 		ExamplesUtils.configureLogging();
 
 		// Load rules and facts from asp file
 		KnowledgeBase kb;
 		try {
 			kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/colouring-encoding.rls"));
-			// kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/crosswords.rls"));
+			// kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/crossword.rls"));
 		} catch (final ParsingException e) {
 			System.out.println("Failed to parse rules: " + e.getMessage());
 			return;
@@ -112,15 +114,19 @@ public class AspExample {
 
 			/* Construct grounded knowledge base */
 			FileWriter fileWriter = new FileWriter(ExamplesUtils.OUTPUT_FOLDER + "grounding_text.lp");
-			Grounder grounder = new Grounder(reasoner, fileWriter, approximatedPredicates);
+			Grounder grounder = new Grounder(reasoner, fileWriter, approximatedPredicates, textFormat);
 
 			for (Fact fact : kb.getFacts()) {
-				try {
-					fileWriter.write(fact.getSyntacticRepresentation() + "\n");
-				} catch (IOException e) {
-					System.out.println("An error occurred.");
-					e.printStackTrace();
-			    }
+				if (textFormat) {
+					try {
+						fileWriter.write(fact.getSyntacticRepresentation() + "\n");
+					} catch (IOException e) {
+						System.out.println("An error occurred.");
+						e.printStackTrace();
+					}
+				} else {
+					grounder.writeFactAspif(fact);
+				}
 			}
 
 			for (AspRule rule : kb.getAspRules()) {

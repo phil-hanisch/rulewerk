@@ -58,4 +58,23 @@ public interface Literal extends SyntaxObject, Entity {
 		return Serializer.getString(this);
 	}
 
+	/**
+	 * Get the identifier for aspif, same for the negated and non-negated literal of same predicate
+	 *
+	 * @return the aspif identifier
+	 */
+	default String getAspifIdentifier(Map<Variable, Term> map) {
+		StringBuilder builder = new StringBuilder();
+		builder.append(this.getPredicate().getSyntacticRepresentation()).append("(");
+		for (Term term : this.getArguments()) {
+			if (term.isVariable()) {
+				builder.append(map.get(term).getSyntacticRepresentation());
+			} else {
+				builder.append(term.getSyntacticRepresentation());
+			}
+			builder.append(",");
+		}
+		builder.append(")");
+		return  builder.toString();
+	};
 }
