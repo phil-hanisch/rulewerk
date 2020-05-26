@@ -24,13 +24,9 @@ import java.util.stream.Collectors;
  */
 
 import java.util.stream.Stream;
-import java.io.FileWriter;
-import java.io.IOException;
 
 import org.apache.commons.lang3.Validate;
 import org.semanticweb.rulewerk.core.model.api.*;
-import org.semanticweb.rulewerk.core.reasoner.Reasoner;
-import org.semanticweb.rulewerk.core.reasoner.QueryResultIterator;
 
 /**
  * Implementation for {@link ChoiceRule}. Represents asp choice rule.
@@ -39,22 +35,24 @@ import org.semanticweb.rulewerk.core.reasoner.QueryResultIterator;
  *
  */
 public class ChoiceRuleImpl implements ChoiceRule {
-
 	final Conjunction<Literal> body;
 	final List<ChoiceElement> head;
+	final Integer upperBound;
+	final Integer lowerBound;
 	final int ruleIdx;
 
 	/**
 	 * Creates a Rule with a (possibly empty) body and an non-empty head. All variables in
 	 * the body must be universally quantified; all variables in the head that do
 	 * not occur in the body must be existentially quantified.
-	 *
 	 * @param head list of choice elements representing the rule
 	 *             head conjuncts.
 	 * @param body list of Literals (negated or non-negated) representing the rule
-	 *             body conjuncts.
+	 * @param lowerBound the lower bound of head elements to choose
+	 * @param upperBound the upper bound of head elements to choose
+	 * @param ruleIdx the rule index
 	 */
-	public ChoiceRuleImpl(final List<ChoiceElement> head, final Conjunction<Literal> body, final int ruleIdx) {
+	public ChoiceRuleImpl(final List<ChoiceElement> head, final Conjunction<Literal> body, Integer lowerBound, Integer upperBound, final int ruleIdx) {
 		Validate.notNull(head);
 		Validate.notNull(body);
 		Validate.notEmpty(head,
@@ -73,6 +71,8 @@ public class ChoiceRuleImpl implements ChoiceRule {
 		this.head = head;
 		this.body = body;
 		this.ruleIdx = ruleIdx;
+		this.upperBound = upperBound;
+		this.lowerBound = lowerBound;
 	}
 
 	@Override
@@ -80,6 +80,8 @@ public class ChoiceRuleImpl implements ChoiceRule {
 		final int prime = 31;
 		int result = this.body.hashCode();
 		result = prime * result + this.head.hashCode();
+		result = prime * result + lowerBound;
+		result = prime * result + upperBound;
 		return result;
 	}
 
@@ -96,7 +98,8 @@ public class ChoiceRuleImpl implements ChoiceRule {
 		}
 		final ChoiceRule other = (ChoiceRule) obj;
 
-		return this.head.equals(other.getChoiceElements()) && this.body.equals(other.getBody());
+		return this.head.equals(other.getChoiceElements()) && this.body.equals(other.getBody())
+			&& this.lowerBound.equals(other.getLowerBound()) && this.upperBound.equals(other.getUpperBound());
 	}
 
 	@Override
@@ -123,6 +126,26 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	@Override
 	public int getRuleIdx() {
 		return this.ruleIdx;
+	}
+
+	@Override
+	public Integer getUpperBound() {
+		return upperBound;
+	}
+
+	@Override
+	public Integer getLowerBound() {
+		return lowerBound;
+	}
+
+	@Override
+	public Boolean hasUpperBound() {
+		return getLowerBound().equals(Integer.MAX_VALUE);
+	}
+
+	@Override
+	public Boolean hasLowerBound() {
+		return lowerBound <= 0;
 	}
 
 	@Override

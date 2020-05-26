@@ -51,4 +51,31 @@ public interface ChoiceRule extends AspRule {
 		return Serializer.getString(this);
 	}
 
+	/**
+	 * Get the upper bound for the choice elements
+	 *
+	 * @return the upper bound
+	 */
+	Integer getUpperBound();
+
+	/**
+	 * Get the lower bound for the choice elements
+	 *
+	 * @return the lower bound
+	 */
+	Integer getLowerBound();
+
+	/**
+	 * Returns whether the upper bound implies any restrictions
+	 *
+	 * @return boolean
+	 */
+	Boolean hasUpperBound();
+
+	/**
+	 * Returns whether the lower bound implies any restrictions
+	 *
+	 * @return boolean
+	 */
+	Boolean hasLowerBound();
 }

@@ -403,9 +403,11 @@ public final class Expressions {
 	 *
 	 * @param head a list of {@link choiceElements}
 	 * @param body a {@link Conjunction} of non-null literals
+	 * @param lowerBound a lower bound of choice elements to choose
+	 * @param upperBound an upper bound of choice elements to choose
 	 * @return a {@link ChoiceRule} corresponding to the input
 	 */
-	public static ChoiceRule makeChoiceRule(final List<ChoiceElement> head, final Conjunction<Literal> body) {
-		return new ChoiceRuleImpl(head, body, ruleCounter++);
+	public static ChoiceRule makeChoiceRule(final List<ChoiceElement> head, final Conjunction<Literal> body, final Integer lowerBound, final Integer upperBound) {
+		return new ChoiceRuleImpl(head, body, lowerBound, upperBound, ruleCounter++);
 	}
 }

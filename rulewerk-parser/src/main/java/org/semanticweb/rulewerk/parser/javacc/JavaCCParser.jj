@@ -194,12 +194,11 @@ void aspStatement() throws PrefixDeclarationException : {
 	KnowledgeBase knowledgeBase;
     resetVariableSets();
 } {
-    ( statement = choiceRule() { addStatement(statement); }
+    statement = choiceRule() { addStatement(statement); }
 	| LOOKAHEAD(disjunctiveRule()) statement = disjunctiveRule() { addStatement(statement); }
 	| statement = constraint() { addStatement(statement); }
 	| statement = fact(FormulaContext.HEAD) { addStatement(statement); }
     | knowledgeBase = directive() { setKnowledgeBase(knowledgeBase); }
-    )
 }
 
 Rule rule() throws PrefixDeclarationException : {
@@ -263,8 +262,10 @@ PositiveLiteral positiveLiteral(FormulaContext context) throws PrefixDeclaration
 ChoiceRule choiceRule() throws PrefixDeclarationException : {
 	List < Literal > body;
 	List < ChoiceElement > head;
+	Token lowerBoundToken = null;
+	Token upperBoundToken = null;
 } {
-    < CHOICE_OPEN > head = listOfChoiceElements(FormulaContext.HEAD) < CHOICE_CLOSE > < ARROW > body = listOfLiterals(FormulaContext.BODY) < DOT > {
+    (lowerBoundToken = <INTEGER> )? < CHOICE_OPEN > head = listOfChoiceElements(FormulaContext.HEAD) < CHOICE_CLOSE > (upperBoundToken = <INTEGER> )? < ARROW > body = listOfLiterals(FormulaContext.BODY) < DOT > {
         // check that the intersection between headExiVars and BodyVars is empty
         for (String variable : headExiVars) {
           if (bodyVars.contains(variable))
@@ -277,7 +278,10 @@ ChoiceRule choiceRule() throws PrefixDeclarationException : {
             throw new ParseException("Unsafe rule " + head + " :- " + body  + "\nUniversal variable " + variable + " occurs in head but not in body.");
         }
 
-        return Expressions.makeChoiceRule(head, Expressions.makeConjunction(body));
+        Integer lowerBound = lowerBoundToken == null ? 0 : Integer.valueOf(lowerBoundToken.image);
+        Integer upperBound = upperBoundToken == null ? Integer.MAX_VALUE : Integer.valueOf(upperBoundToken.image);
+
+        return Expressions.makeChoiceRule(head, Expressions.makeConjunction(body), lowerBound, upperBound);
     }
 }
 
