@@ -68,6 +68,10 @@ import org.semanticweb.rulewerk.core.model.implementation.ConjunctionImpl;
 public class AspExample {
 
 	public static void main(final String[] args) throws IOException, ParsingException {
+		String instance = args[0];
+		long startTimeOverall, startTimeVLog, startTimeOutput, endTimeOverall, endTimeVLog, endTimeOutput;
+		startTimeOverall = System.nanoTime();
+
 		boolean textFormat = false;
 
 		ExamplesUtils.configureLogging();
@@ -75,8 +79,7 @@ public class AspExample {
 		// Load rules and facts from asp file
 		KnowledgeBase kb;
 		try {
-			kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/colouring-encoding.rls"));
-			// kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/crossword.rls"));
+			kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/" + instance));
 		} catch (final ParsingException e) {
 			System.out.println("Failed to parse rules: " + e.getMessage());
 			return;
@@ -105,14 +108,17 @@ public class AspExample {
 		System.out.println("");
 
 		/* Execute reasoning */
+		startTimeVLog = System.nanoTime();
 		try (Reasoner reasoner = new VLogReasoner(kb)) {
 			reasoner.setLogFile(ExamplesUtils.OUTPUT_FOLDER + "vlog.log");
 			reasoner.setLogLevel(LogLevel.DEBUG);
 
 			/* Initialise reasoner and compute inferences */
 			reasoner.reason();
+			endTimeVLog = System.nanoTime();
 
 			/* Construct grounded knowledge base */
+			startTimeOutput = System.nanoTime();
 			FileWriter fileWriter = new FileWriter(ExamplesUtils.OUTPUT_FOLDER + "grounding_text.lp");
 			Grounder grounder = new Grounder(reasoner, fileWriter, approximatedPredicates, textFormat);
 
@@ -135,7 +141,14 @@ public class AspExample {
 			}
 
 			fileWriter.close();
+			endTimeOutput = System.nanoTime();
 		}
+
+		endTimeOverall = System.nanoTime();
+
+		System.out.println("TIMING [s] # " + instance + " # VLog # " + ((float) (endTimeVLog - startTimeVLog) / 1000000000));
+		System.out.println("TIMING [s] # " + instance + " # Output # " + ((float) (endTimeOutput - startTimeOutput) / 1000000000));
+		System.out.println("TIMING [s] # " + instance + " # Overall # " + ((float) (endTimeOverall - startTimeOverall) / 1000000000));
 	}
 
 	/**
