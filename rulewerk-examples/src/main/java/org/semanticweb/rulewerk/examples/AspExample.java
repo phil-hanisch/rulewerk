@@ -146,9 +146,9 @@ public class AspExample {
 
 		endTimeOverall = System.nanoTime();
 
-		System.out.println("TIMING [s] # " + instance + " # VLog # " + ((float) (endTimeVLog - startTimeVLog) / 1000000000));
-		System.out.println("TIMING [s] # " + instance + " # Output # " + ((float) (endTimeOutput - startTimeOutput) / 1000000000));
-		System.out.println("TIMING [s] # " + instance + " # Overall # " + ((float) (endTimeOverall - startTimeOverall) / 1000000000));
+		// System.out.println("TIMING [s] # " + instance + " # VLog # " + ((float) (endTimeVLog - startTimeVLog) / 1000000000));
+		System.out.println("TIMING [s] # " + instance + " # Improved # " + ((float) (endTimeOutput - startTimeOutput) / 1000000000));
+		System.out.println("TIMING [s] # " + instance + " # ImprovedOverall # " + ((float) (endTimeOverall - startTimeOverall) / 1000000000));
 	}
 
 	/**

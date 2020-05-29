@@ -37,7 +37,7 @@ public interface AspifIndex {
 	 * @param groundingMap a map containing a term for each variable
 	 * @return the aspif integer
 	 */
-	int getAspifInteger(Literal literal, Map<Variable, Term> groundingMap);
+	int getAspifInteger(Literal literal, Map<Variable, Long> groundingMap);
 
 	int getAspifInteger(Fact fact);
 }

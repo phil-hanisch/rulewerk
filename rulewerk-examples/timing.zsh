@@ -12,10 +12,10 @@ for size in 1 2 3 4 5 6 7 8 9 10; do
 
     # ASP
     # create asp programm
-    python crosswords/crossword.py $size --words crosswords/words1.txt > "crosswords/instances/${instance}"
+    # python crosswords/crossword.py $size --words crosswords/words1.txt > "crosswords/instances/${instance}"
 
-    duration=$({time gringo crosswords/instances/${instance}} |& grep gringo | cut -f 10 -d " ")
-    print "TIMING [s] # ${instance} # Gringo # ${duration//,/.}" >> results.txt
+    # duration=$({time gringo crosswords/instances/${instance}} |& grep gringo | cut -f 10 -d " ")
+    # print "TIMING [s] # ${instance} # Gringo # ${duration//,/.}" >> results.txt
 
     print $instance "done"
 done

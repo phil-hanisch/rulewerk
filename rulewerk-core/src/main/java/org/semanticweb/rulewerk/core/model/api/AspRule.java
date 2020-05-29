@@ -136,7 +136,7 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	 * @param answerMap map representing the instance
 	 * @return the grounding
 	 */
-	String groundAspif(Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Term> answerMap);
+	String groundAspif(Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Long> answerMap);
 
 	/**
 	 * Append the aspif grounding for the body of the rule
@@ -146,7 +146,7 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	 * @param aspifIndex index structure needed for aspif
 	 * @param answerMap map representing the instance
 	 */
-	default void appendBodyAspif(StringBuilder builder, Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Term> answerMap) {
+	default void appendBodyAspif(StringBuilder builder, Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Long> answerMap) {
 		builder.append(" ").append(0); // body type == normal
 		builder.append(" ").append(this.getBody().getLiterals().stream().filter(literal -> approximatedPredicates.contains(literal.getPredicate())).count()); // #bodyLiterals
 		for (Literal literal : this.getBody().getLiterals()) {

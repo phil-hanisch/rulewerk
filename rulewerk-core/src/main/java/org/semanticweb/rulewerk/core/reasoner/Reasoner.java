@@ -25,6 +25,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import karmaresearch.vlog.NotStartedException;
+import org.semanticweb.rulewerk.core.model.api.Term;
 import org.semanticweb.rulewerk.core.model.api.Constant;
 import org.semanticweb.rulewerk.core.model.api.DataSourceDeclaration;
 import org.semanticweb.rulewerk.core.model.api.ExistentialVariable;
@@ -362,6 +364,8 @@ public interface Reasoner extends AutoCloseable, KnowledgeBaseListener {
 	 */
 	QueryResultIterator answerQuery(PositiveLiteral query, boolean includeNulls);
 
+	karmaresearch.vlog.QueryResultIterator answerQueryInNativeFormat(PositiveLiteral query, boolean includeNulls);
+
 	/**
 	 * * Evaluates an atomic ({@code query}), and counts the number of query answer
 	 * implicit facts loaded into the reasoner and the number of query answer
@@ -494,6 +498,33 @@ public interface Reasoner extends AutoCloseable, KnowledgeBaseListener {
 	 */
 	Correctness exportQueryAnswersToCsv(PositiveLiteral query, String csvFilePath, boolean includeNulls)
 			throws IOException;
+
+	/**
+	 * Get the constant id for a given constant name
+	 *
+	 * @param constantName the constant name to get the id for
+	 * @return the constant id
+	 * @throws NotStartedException
+	 */
+	long getOrAddConstantId(String constantName) throws NotStartedException;
+
+	/**
+	 * Get the constant name for a given constant id
+	 * @param constantId the constant id to get the name for
+	 * @return the constant name
+	 * @throws NotStartedException
+	 */
+	String getConstant(long constantId) throws NotStartedException;
+
+	/**
+	 * Converts an internal VLog term ({@link karmaresearch.vlog.Term}) to a VLog
+	 * API model {@link Term} of the same type and name.
+	 *
+	 * @param vLogTerm term to be converted
+	 * @return a ({@link karmaresearch.vlog.Term}) with the same name as given
+	 *         {@code vLogTerm} and of the corresponding type.
+	 */
+	Term toTerm(karmaresearch.vlog.Term vLogTerm);
 
 	/**
 	 * Resets the reasoner. All implicit facts inferred by reasoning are discarded.

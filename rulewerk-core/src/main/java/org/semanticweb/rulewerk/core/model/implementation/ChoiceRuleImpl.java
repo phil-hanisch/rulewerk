@@ -196,7 +196,7 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	}
 
 	@Override
-	public String groundAspif(Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Term> answerMap) {
+	public String groundAspif(Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Long> answerMap) {
 		return null;
 	}
 

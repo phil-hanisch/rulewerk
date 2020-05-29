@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.Validate;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.semanticweb.rulewerk.core.exceptions.IncompatiblePredicateArityException;
 import org.semanticweb.rulewerk.core.exceptions.ReasonerStateException;
 import org.semanticweb.rulewerk.core.exceptions.RulewerkRuntimeException;
@@ -400,6 +401,70 @@ public class VLogReasoner implements Reasoner {
 
 		logWarningOnCorrectness();
 		return new VLogQueryResultIterator(stringQueryResultIterator, this.correctness);
+	}
+
+	@Override
+	public karmaresearch.vlog.QueryResultIterator answerQueryInNativeFormat(PositiveLiteral query, boolean includeNulls) {
+		validateBeforeQuerying(query);
+
+		final boolean filterBlanks = !includeNulls;
+		final karmaresearch.vlog.Atom vLogAtom = ModelToVLogConverter.toVLogAtom(query);
+
+		karmaresearch.vlog.QueryResultIterator queryResultIterator;
+
+		try {
+			final int predicateId =  this.vLog.getPredicateId(vLogAtom.getPredicate());
+			final long[] terms = extractTerms(vLogAtom.getTerms());
+			queryResultIterator = this.vLog.query(predicateId, terms, true, filterBlanks);
+		} catch (final NotStartedException e) {
+			throw new RulewerkRuntimeException("Inconsistent reasoner state.", e);
+		} catch (final NonExistingPredicateException e1) {
+			// TODO might be handled
+			throw new RulewerkRuntimeException("Query uses predicate " + query.getPredicate()
+				+ " that does not occur in the knowledge base. Answer must be empty!");
+		}
+
+		logWarningOnCorrectness();
+		return queryResultIterator;
+	}
+
+	private long[] extractTerms(karmaresearch.vlog.Term[] terms) throws NotStartedException {
+		ArrayList<String> variables = new ArrayList<>();
+		long[] longTerms = new long[terms.length];
+		for (int i = 0; i < terms.length; i++) {
+			if (terms[i].getTermType() == karmaresearch.vlog.Term.TermType.VARIABLE) {
+				boolean found = false;
+				for (int j = 0; j < variables.size(); j++) {
+					if (variables.get(j).equals(terms[i].getName())) {
+						found = true;
+						longTerms[i] = -j - 1;
+						break;
+					}
+				}
+				if (!found) {
+					variables.add(terms[i].getName());
+					longTerms[i] = -variables.size();
+				}
+			} else {
+				longTerms[i] = this.vLog.getOrAddConstantId(terms[i].getName());
+			}
+		}
+		return longTerms;
+	}
+
+	@Override
+	public long getOrAddConstantId(String constantName) throws NotStartedException {
+		return this.vLog.getOrAddConstantId(constantName);
+	}
+
+	@Override
+	public String getConstant(long constantId) throws NotStartedException {
+		return this.vLog.getConstant(constantId);
+	}
+
+	@Override
+	public Term toTerm(karmaresearch.vlog.Term vLogTerm) {
+		return VLogToModelConverter.toTerm(vLogTerm);
 	}
 
 	@Override

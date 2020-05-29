@@ -152,7 +152,7 @@ public class DisjunctiveRuleImpl implements DisjunctiveRule {
 	}
 
 	@Override
-	public String groundAspif(Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Term> answerMap) {
+	public String groundAspif(Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Long> answerMap) {
 		StringBuilder builder = new StringBuilder();
 		builder.append(1); // rule statement
 		builder.append(" ").append(0); // rule type == disjunctive

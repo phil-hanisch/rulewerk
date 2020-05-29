@@ -20,6 +20,8 @@ package org.semanticweb.rulewerk.core.model.implementation;
  * #L%
  */
 
+import karmaresearch.vlog.NotStartedException;
+import karmaresearch.vlog.Term.TermType;
 import org.semanticweb.rulewerk.core.model.api.*;
 import org.semanticweb.rulewerk.core.reasoner.QueryResultIterator;
 import org.semanticweb.rulewerk.core.reasoner.Reasoner;
@@ -51,7 +53,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		this.writer = writer;
 		this.approximatedPredicates = approximatedPredicates;
 		this.textFormat = textFormat;
-		this.aspifIndex = new AspifIndexImpl();
+		this.aspifIndex = new AspifIndexImpl(reasoner);
 	}
 
 	@Override
@@ -79,24 +81,28 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 */
 	public void groundRule(AspRule rule) {
 		PositiveLiteral literal = rule.getHelperLiteral();
-		Map<Variable, Term> answerMap = new HashMap<>();
+		Map<Variable, Long> answerMap = new HashMap<>();
 		List<Variable> variables = literal.getUniversalVariables().collect(Collectors.toList());
 
-		try (final QueryResultIterator answers = reasoner.answerQuery(literal, true)) {
+		long startTime = System.nanoTime();
+		int counter = 0;
+
+		try (final karmaresearch.vlog.QueryResultIterator answers = reasoner.answerQueryInNativeFormat(literal, true)) {
 			// each query result represents a grounding
 			while(answers.hasNext()) {
-				List<Term> terms = answers.next().getTerms();
+				counter++;
+				long[] terms = answers.next();
 				String groundedRule;
 
-				for (int i = 0; i < variables.size(); i++) {
-					answerMap.put(variables.get(i), terms.get(i));
+				for (int i = 0; i < terms.length; i++) {
+					answerMap.put(variables.get(i), terms[i]);
 				}
 
-				if (this.textFormat) {
-					groundedRule = rule.ground(approximatedPredicates, answerMap);
-				} else {
-					groundedRule = rule.groundAspif(approximatedPredicates, aspifIndex, answerMap);
-				}
+//				if (this.textFormat) {
+//					groundedRule = rule.ground(approximatedPredicates, answerMap);
+//				} else {
+				groundedRule = rule.groundAspif(approximatedPredicates, aspifIndex, answerMap);
+//				}
 
 				try {
 					writer.write(groundedRule);
@@ -106,6 +112,15 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				}
 			}
 		}
+
+		long endTime = System.nanoTime();
+		System.out.println("Timing for rule " + rule.getSyntacticRepresentation());
+		System.out.println("Duration: " + ((endTime - startTime) / 1000000) + " ms");
+		System.out.println("Instances: " + counter);
+		if (counter > 0) {
+			System.out.println("Duration per instance: " + ((endTime - startTime) / counter ) + " ns");
+		}
+		System.out.println();
 	}
 
 	/**
@@ -115,36 +130,38 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 */
 	public void groundRule(ChoiceRule rule) {
 		PositiveLiteral literal = rule.getHelperLiteral();
-		Map<Variable, Term> answerMap = new HashMap<>();
+		Map<Variable, Long> answerMap = new HashMap<>();
 		List<Variable> variables = literal.getUniversalVariables().collect(Collectors.toList());
 
-		try (final QueryResultIterator answers = reasoner.answerQuery(literal, true)) {
+		int counter = 0;
+		try (final karmaresearch.vlog.QueryResultIterator answers = reasoner.answerQueryInNativeFormat(literal, true)) {
 			// each query result represents a grounding (= grounding of the global variables)
 			while (answers.hasNext()) {
-				List<Term> terms = answers.next().getTerms();
-				for (int i = 0; i < variables.size(); i++) {
-					answerMap.put(variables.get(i), terms.get(i));
+				counter++;
+				long[] terms = answers.next();
+				for (int i = 0; i < terms.length; i++) {
+					answerMap.put(variables.get(i), terms[i]);
 				}
 
-				if (this.textFormat) {
-					// ground choice with placeholder for choice elements
-					String groundedRule = rule.ground(approximatedPredicates, answerMap);
-
-					Object[] choiceElements = new String[rule.getChoiceElements().size()];
-					int idx = 0;
-					// each choice element contributes individual grounded elements
-					for (ChoiceElement choiceElement : rule.getChoiceElements()) {
-						choiceElements[idx] = groundChoiceElement(choiceElement, rule, answerMap, idx);
-						idx++;
-					}
-
-					try {
-						writer.write(String.format(groundedRule, choiceElements));
-					} catch (IOException e) {
-						System.out.println("An error occurred.");
-						e.printStackTrace();
-					}
-				} else {
+//				if (this.textFormat) {
+//					// ground choice with placeholder for choice elements
+//					String groundedRule = rule.ground(approximatedPredicates, answerMap);
+//
+//					Object[] choiceElements = new String[rule.getChoiceElements().size()];
+//					int idx = 0;
+//					// each choice element contributes individual grounded elements
+//					for (ChoiceElement choiceElement : rule.getChoiceElements()) {
+//						choiceElements[idx] = groundChoiceElement(choiceElement, rule, answerMap, idx);
+//						idx++;
+//					}
+//
+//					try {
+//						writer.write(String.format(groundedRule, choiceElements));
+//					} catch (IOException e) {
+//						System.out.println("An error occurred.");
+//						e.printStackTrace();
+//					}
+//				} else {
 					// helper integer for body (get and write)
 					StringBuilder builder = new StringBuilder();
 					// rule statement; with disjunctive head; with one literal
@@ -188,9 +205,10 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 					// -- upper bound satisfied (p_upper)
 					// -- bound satisfied (p_bound :- p_lower, not p_upper)
 					// -- :- body, not p_bound
-				}
+//				}
 			}
 		}
+		System.out.println(counter);
 	}
 
 	/**
@@ -235,22 +253,42 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		return builder.toString();
 	}
 
-	public void addChoiceElementIntegers(Set<Integer> integerSet, ChoiceElement choiceElement, ChoiceRule rule, Map<Variable, Term> globalMap, int idx) {
+	public void addChoiceElementIntegers(Set<Integer> integerSet, ChoiceElement choiceElement, ChoiceRule rule, Map<Variable, Long> globalMap, int idx) {
 		List<Term> terms = Stream.concat(rule.getBody().getUniversalVariables(), choiceElement.getContext().getUniversalVariables())
 			.distinct()
-			.map(variable -> globalMap.getOrDefault(variable, variable))
+			.map(variable -> {
+				Long termId;
+				if ((termId = globalMap.get(variable)) != null) {
+					try {
+						karmaresearch.vlog.Term term;
+						String s = reasoner.getConstant(termId);
+						if (s == null) {
+							term = new karmaresearch.vlog.Term(TermType.BLANK, "" + (termId >> 40) + "_"
+								+ ((termId >> 32) & 0377) + "_" + (termId & 0xffffffffL));
+						} else {
+							term = new karmaresearch.vlog.Term(TermType.CONSTANT, s);
+						}
+						return reasoner.toTerm(term);
+					} catch (NotStartedException e) {
+						// Should not happen, we just did a query ...
+						return variable;
+					}
+				} else {
+					return variable;
+				}
+			})
 			.collect(Collectors.toList());
 
-		Map<Variable, Term> map = new HashMap<>(globalMap);
+		Map<Variable, Long> map = new HashMap<>(globalMap);
 		PositiveLiteral literal = rule.getHelperLiteral(terms, rule.getRuleIdx(), idx);
-		final QueryResultIterator answers = reasoner.answerQuery(literal, true);
+		final karmaresearch.vlog.QueryResultIterator answers = reasoner.answerQueryInNativeFormat(literal, true);
 
 		while (answers.hasNext()) {
-			List<Term> localTerms = answers.next().getTerms();
+			long[] localTerms = answers.next();
 			for (int i = 0; i < terms.size(); i++) {
 				Term globalTerm = terms.get(i);
 				if (globalTerm.isVariable()) {
-					map.put((Variable) globalTerm, localTerms.get(i));
+					map.put((Variable) globalTerm, localTerms[i]);
 				}
 			}
 
