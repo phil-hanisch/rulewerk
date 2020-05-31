@@ -39,5 +39,15 @@ public interface AspifIndex {
 	 */
 	int getAspifInteger(Literal literal, Map<Variable, Long> groundingMap);
 
+	/**
+	 * Get the aspif integer representing a given literal in a specific context
+	 *
+	 * @param literal a literal
+	 * @param groundingMap a map containing a term for each variable
+	 * @param context the context that makes the literal distinguishable
+	 * @return the aspif integer
+	 */
+	int getAspifInteger(Literal literal, Map<Variable, Long> groundingMap, int context);
+
 	int getAspifInteger(Fact fact);
 }

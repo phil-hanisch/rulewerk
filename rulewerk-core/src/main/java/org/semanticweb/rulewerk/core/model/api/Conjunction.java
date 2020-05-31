@@ -58,4 +58,11 @@ public interface Conjunction<T extends Literal> extends Iterable<T>, SyntaxObjec
 	}
 
 	String ground(Set<Predicate> approximatedPredicates, Map<Variable, Term> answerMap);
+
+	/**
+	 * Count the literals that are approximated, i.e. they are relevant for an asp grounding
+	 * @param approximatedPredicates set of approximated predicates
+	 * @return the number of relevant literals
+	 */
+	int getRelevantLiteralCount(Set<Predicate> approximatedPredicates);
 }

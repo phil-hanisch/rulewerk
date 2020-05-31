@@ -117,4 +117,15 @@ public class ConjunctionImpl<T extends Literal> implements Conjunction<T> {
 		}
 		return new ConjunctionImpl<>(literals);
 	}
+
+	@Override
+	public int getRelevantLiteralCount(Set<Predicate> approximatedPredicates) {
+		int count = 0;
+		for (Literal literal : this.getLiterals()) {
+			if (approximatedPredicates.contains(literal.getPredicate())) {
+				count++;
+			}
+		}
+		return count;
+	}
 }

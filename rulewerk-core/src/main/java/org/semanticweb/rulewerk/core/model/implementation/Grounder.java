@@ -166,7 +166,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 					StringBuilder builder = new StringBuilder();
 					// rule statement; with disjunctive head; with one literal
 					builder.append(1).append(" ").append(0).append(" ").append(1);
-					Integer bodyHelpInteger = aspifIndex.getAspifInteger(literal, answerMap);
+					int bodyHelpInteger = aspifIndex.getAspifInteger(literal, answerMap);
 					builder.append(" ").append(bodyHelpInteger);
 					rule.appendBodyAspif(builder, approximatedPredicates, aspifIndex, answerMap);
 					try {
@@ -176,35 +176,49 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 						e.printStackTrace();
 					}
 
-					Set<Integer> choiceElementIntegerSet = new HashSet<>();
+					Set<Integer> choiceElementToCountIntegers = new HashSet<>();
 					int idx = 0;
 					for (ChoiceElement choiceElement : rule.getChoiceElements()) {
-						addChoiceElementIntegers(choiceElementIntegerSet, choiceElement, rule, answerMap, idx);
+						choiceElementToCountIntegers.addAll(writeAndCollectChoiceElement(choiceElement, rule, answerMap, idx, bodyHelpInteger));
 						idx++;
 					}
 
-					builder = new StringBuilder(11 + 2 * choiceElementIntegerSet.size());
-					// rule statement; choice rule
-					builder.append(1).append(" ").append(1);
-					builder.append(" ").append(choiceElementIntegerSet.size());
-					for (Integer integer : choiceElementIntegerSet) {
-						builder.append(" ").append(integer);
-					}
-					// normal body; with one literal; the helper literal
-					builder.append(" ").append(0).append(" ").append(1).append(" ").append(bodyHelpInteger).append("\n");
-					try {
-						writer.write(builder.toString());
-					} catch (IOException e) {
-						System.out.println("An error occurred.");
-						e.printStackTrace();
-					}
+					// if there are bounds, take care that they are satisfied
+					if (rule.hasLowerBound()) {
+						// introduce integer to check if enough elements has been chosen
+						int lowerBoundInteger = aspifIndex.getAspifInteger(literal, answerMap, 0);
+						try {
+							writer.write("1 0 1 " + lowerBoundInteger); // rule statement for a disjunctive rule with a single head literal
+							writer.write(" 1 " + rule.getLowerBound() + " " + choiceElementToCountIntegers.size()); // weighted body
+							for (Integer choiceElementToCount : choiceElementToCountIntegers) {
+								writer.write(" " + choiceElementToCount + " 1"); // element with weight 1
+							}
+							writer.write("\n");
 
-					// handle constraints
-					// -- element counts :- element, context
-					// -- lower bound satisfied (p_lower)
-					// -- upper bound satisfied (p_upper)
-					// -- bound satisfied (p_bound :- p_lower, not p_upper)
-					// -- :- body, not p_bound
+							writer.write("1 0 0 0 2 " + bodyHelpInteger + " -" + lowerBoundInteger);
+							writer.write("\n");
+						} catch (IOException e) {
+							System.out.println("An error occurred.");
+							e.printStackTrace();
+						}
+					} else if (rule.hasUpperBound()) {
+						// introduce integer to check if too many elements has been chosen
+						int upperBoundInteger = aspifIndex.getAspifInteger(literal, answerMap, 1);
+						try {
+							writer.write("1 0 1 " + upperBoundInteger); // rule statement for a disjunctive rule with a single head literal
+							writer.write(" 1 " + (rule.getUpperBound() + 1) + " " + choiceElementToCountIntegers.size()); // weighted body
+							for (Integer choiceElementToCount : choiceElementToCountIntegers) {
+								writer.write(" " + choiceElementToCount + " 1"); // element with weight 1
+							}
+							writer.write("\n");
+
+							writer.write("1 0 0 0 2 " + bodyHelpInteger + " " + upperBoundInteger);
+							writer.write("\n");
+						} catch (IOException e) {
+							System.out.println("An error occurred.");
+							e.printStackTrace();
+						}
+					}
 //				}
 			}
 		}
@@ -253,7 +267,23 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		return builder.toString();
 	}
 
-	public void addChoiceElementIntegers(Set<Integer> integerSet, ChoiceElement choiceElement, ChoiceRule rule, Map<Variable, Long> globalMap, int idx) {
+	/**
+	 * Write the aspif instances of the choice rule that allows to choose a grounding of the choice element if the body
+	 * and the condition is satisfied. Introduce and collect an integer for each grounding that represents that this
+	 * grounding is chosen, i.e. the integer for the grounding and the condition are true.
+	 * Remark: The introduced integer is the same for two groundings iff the grounded literals are the same and they
+	 * belong to the same rule, i.e. the condition does not matter.
+	 *
+	 * @param choiceElement the choice element to ground
+	 * @param rule the rule the choice element belongs to
+	 * @param globalMap a map representing the body instance
+	 * @param idx the index of the choice element (in the head)
+	 * @param bodyHelpInteger an integer that is true iff all literals of the body are true
+	 * @return the integer set
+	 */
+	private Set<Integer> writeAndCollectChoiceElement(ChoiceElement choiceElement, ChoiceRule rule, Map<Variable, Long> globalMap, int idx, int bodyHelpInteger) {
+		// Get all the variables and terms used by the body and the condition of the choice element
+		// For the variables: Replace them with the constant if they are part of the grounding of the body
 		List<Term> terms = Stream.concat(rule.getBody().getUniversalVariables(), choiceElement.getContext().getUniversalVariables())
 			.distinct()
 			.map(variable -> {
@@ -283,7 +313,9 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		PositiveLiteral literal = rule.getHelperLiteral(terms, rule.getRuleIdx(), idx);
 		final karmaresearch.vlog.QueryResultIterator answers = reasoner.answerQueryInNativeFormat(literal, true);
 
+		Set<Integer> choiceElementToCountIntegerSet = new HashSet<>();
 		while (answers.hasNext()) {
+			// build the map that represents the completely (locally and globally) ground rule
 			long[] localTerms = answers.next();
 			for (int i = 0; i < terms.size(); i++) {
 				Term globalTerm = terms.get(i);
@@ -292,7 +324,51 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				}
 			}
 
-			integerSet.add(aspifIndex.getAspifInteger(choiceElement.getLiteral(), map));
+			try {
+				int choiceElementInteger = aspifIndex.getAspifInteger(choiceElement.getLiteral(), map);
+				// choice element integer :- body integer, condition integers
+				writer.write("1 1 1"); // rule statement for a choice rule for a single literal
+				writer.write(" " + choiceElementInteger);
+				// TODO: Consider introducing helper literal for the condition
+				writer.write(" 0 " + (choiceElement.getContext().getRelevantLiteralCount(approximatedPredicates) + 1));
+				writeConjunction(choiceElement.getContext(), map);
+				writer.write(" " + bodyHelpInteger);
+				writer.write("\n");
+
+				if (rule.hasLowerBound() || rule.hasUpperBound()) {
+					int choiceElementToCountInteger = aspifIndex.getAspifInteger(literal, map, rule.getRuleIdx());
+					// choice element counts integer :- choice element integer, condition integers
+					writer.write("1 0 1 " + choiceElementToCountInteger); // rule statement for a disjunctive rule with a single head literal
+					writer.write(" 0 " + (choiceElement.getContext().getRelevantLiteralCount(approximatedPredicates) + 1));
+					writeConjunction(choiceElement.getContext(), map);
+					writer.write(" " + choiceElementInteger);
+					writer.write("\n");
+
+					// collect element counts integer
+					choiceElementToCountIntegerSet.add(choiceElementToCountInteger);
+				}
+
+			} catch (IOException e) {
+				System.out.println("An error occurred.");
+				e.printStackTrace();
+			}
+		}
+
+		return choiceElementToCountIntegerSet;
+	}
+
+	/**
+	 * Write the integers representing the literals of the conjunction for the instance given by the answerMap.
+	 * Ignore literals that are not approximated, as they are always true.
+	 * @param conjunction the conjunction to get the aspif integers for
+	 * @param answerMap a map representing the instance of the conjunction
+	 * @throws IOException an exception due to writing to a file
+	 */
+	private void writeConjunction(Conjunction<Literal> conjunction, Map<Variable, Long> answerMap) throws IOException {
+		for (Literal literal : conjunction.getLiterals()) {
+			if (approximatedPredicates.contains(literal.getPredicate())) {
+				writer.write(" " +  aspifIndex.getAspifInteger(literal, answerMap));
+			}
 		}
 	}
 

@@ -67,6 +67,17 @@ public class AspifIndexImpl implements AspifIndex {
 		return aspifInteger;
 	}
 
+	@Override
+	public int getAspifInteger(Literal literal, Map<Variable, Long> answerMap, int ruleIdx) {
+		String aspifIdentifier = ruleIdx + ":" + getAspifIdentifier(literal, answerMap);
+		Integer aspifInteger;
+		if ((aspifInteger = this.literalMap.get(aspifIdentifier)) == null) {
+			aspifInteger = this.literalCount++;
+			literalMap.put(aspifIdentifier, aspifInteger);
+		}
+		return literal.isNegated() ? -aspifInteger : aspifInteger;
+	}
+
 	private String getAspifIdentifier(Literal literal, Map<Variable, Long> answerMap) {
 		StringBuilder builder = new StringBuilder();
 		builder.append(literal.getPredicate().getSyntacticRepresentation());
