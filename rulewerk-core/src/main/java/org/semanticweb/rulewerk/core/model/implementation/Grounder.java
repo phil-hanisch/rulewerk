@@ -201,7 +201,8 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 							System.out.println("An error occurred.");
 							e.printStackTrace();
 						}
-					} else if (rule.hasUpperBound()) {
+					}
+					if (rule.hasUpperBound()) {
 						// introduce integer to check if too many elements has been chosen
 						int upperBoundInteger = aspifIndex.getAspifInteger(literal, answerMap, 1);
 						try {

@@ -298,7 +298,7 @@ ChoiceElement choiceElement(FormulaContext context) throws PrefixDeclarationExce
     PositiveLiteral l;
     List < Literal > list;
 } {
-	l = positiveLiteral(context) < CHOICE_COLON > list = listOfLiterals(FormulaContext.BODY) {
+	l = positiveLiteral(context) < COLON > list = listOfLiterals(FormulaContext.BODY) {
 		return Expressions.makeChoiceElement(l, Expressions.makeConjunction(list));
 	}
 }
@@ -630,7 +630,7 @@ MORE : {
   | < RPAREN : ")" > { popState(); }
 }
 
-< TERM, DIRECTIVE_ARGUMENTS > TOKEN : {
+< TERM, DIRECTIVE_ARGUMENTS, DEFAULT > TOKEN : {
   < INTEGER : (< SIGN >)? < DIGITS > >
   | < DECIMAL : (< SIGN >)? ( < DIGITS > "." (< DIGIT >)*
 							  | "." < DIGITS > ) >
@@ -678,7 +678,6 @@ TOKEN : {
 	< CHOICE_OPEN : "{" >
   | < CHOICE_CLOSE : "}" >
   | < CHOICE_SEMICOLON : ";" >
-  | < CHOICE_COLON : ":" >
   | < PIPE : "|" >
 }
 

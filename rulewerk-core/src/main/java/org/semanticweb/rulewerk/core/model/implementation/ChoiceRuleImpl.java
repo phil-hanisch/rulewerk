@@ -140,12 +140,12 @@ public class ChoiceRuleImpl implements ChoiceRule {
 
 	@Override
 	public Boolean hasUpperBound() {
-		return getLowerBound().equals(Integer.MAX_VALUE);
+		return !getUpperBound().equals(Integer.MAX_VALUE);
 	}
 
 	@Override
 	public Boolean hasLowerBound() {
-		return lowerBound <= 0;
+		return getLowerBound() > 0;
 	}
 
 	@Override
