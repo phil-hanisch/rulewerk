@@ -129,16 +129,6 @@ public class ConstraintImpl implements Constraint {
 	}
 
 	@Override
-	public String groundAspif(Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Long> answerMap) {
-		StringBuilder builder = new StringBuilder();
-		builder.append(1); // rule statement
-		builder.append(" ").append(0); // rule type == disjunctive (with empty head)
-		builder.append(" ").append(0); // #headLiteral = 0
-		this.appendBodyAspif(builder, approximatedPredicates, aspifIndex, answerMap);
-		return builder.toString();
-	}
-
-	@Override
 	public <T> T accept(AspRuleVisitor<T> aspRuleVisitor) {
 		return aspRuleVisitor.visit(this);
 	}

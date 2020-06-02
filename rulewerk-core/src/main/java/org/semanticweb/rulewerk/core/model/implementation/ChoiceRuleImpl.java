@@ -196,11 +196,6 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	}
 
 	@Override
-	public String groundAspif(Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Long> answerMap) {
-		return null;
-	}
-
-	@Override
 	public <T> T accept(StatementVisitor<T> statementVisitor) {
 		return statementVisitor.visit(this);
 	}

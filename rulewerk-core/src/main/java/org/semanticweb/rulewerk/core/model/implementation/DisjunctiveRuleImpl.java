@@ -152,19 +152,6 @@ public class DisjunctiveRuleImpl implements DisjunctiveRule {
 	}
 
 	@Override
-	public String groundAspif(Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Long> answerMap) {
-		StringBuilder builder = new StringBuilder();
-		builder.append(1); // rule statement
-		builder.append(" ").append(0); // rule type == disjunctive
-		builder.append(" ").append(this.getHeadLiterals().getLiterals().size()); // #headLiterals
-		for (Literal literal : this.getHeadLiterals().getLiterals()) {
-			builder.append(" ").append(aspifIndex.getAspifInteger(literal, answerMap));
-		}
-		this.appendBodyAspif(builder, approximatedPredicates, aspifIndex, answerMap);
-		return builder.toString();
-	}
-
-	@Override
 	public <T> T accept(AspRuleVisitor<T> aspRuleVisitor) {
 		return aspRuleVisitor.visit(this);
 	}

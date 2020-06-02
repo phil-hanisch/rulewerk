@@ -102,7 +102,7 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	}
 
 	/**
-	 * Construct a helper literal
+	 * Construct the helper literal that is unique for this rule and has the same variables as the rule body
 	 *
 	 * @return a positive helper literal
 	 */
@@ -128,32 +128,4 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 		Predicate predicate = new PredicateImpl(predicateName.toString(), terms.size());
 		return new PositiveLiteralImpl(predicate, terms);
 	}
-
-	/**
-	 * Get the grounding of the rule in aspif format
-	 * @param approximatedPredicates set of approximated predicates
-	 * @param aspifIndex index structure needed for aspif
-	 * @param answerMap map representing the instance
-	 * @return the grounding
-	 */
-	String groundAspif(Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Long> answerMap);
-
-	/**
-	 * Append the aspif grounding for the body of the rule
-	 *
-	 * @param builder StringBuilder which the body grounding is appended to
-	 * @param approximatedPredicates set of approximated predicates
-	 * @param aspifIndex index structure needed for aspif
-	 * @param answerMap map representing the instance
-	 */
-	default void appendBodyAspif(StringBuilder builder, Set<Predicate> approximatedPredicates, AspifIndex aspifIndex, Map<Variable, Long> answerMap) {
-		builder.append(" ").append(0); // body type == normal
-		builder.append(" ").append(this.getBody().getLiterals().stream().filter(literal -> approximatedPredicates.contains(literal.getPredicate())).count()); // #bodyLiterals
-		for (Literal literal : this.getBody().getLiterals()) {
-			if (approximatedPredicates.contains(literal.getPredicate())) {
-				builder.append(" ").append(aspifIndex.getAspifInteger(literal, answerMap));
-			}
-		}
-		builder.append("\n");
-	};
 }

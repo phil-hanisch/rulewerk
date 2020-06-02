@@ -20,6 +20,7 @@ package org.semanticweb.rulewerk.examples;
  * #L%
  */
 
+import java.io.BufferedWriter;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -57,11 +58,8 @@ import org.semanticweb.rulewerk.core.model.implementation.RuleImpl;
 import org.semanticweb.rulewerk.core.model.implementation.ConjunctionImpl;
 
 /**
- * This example reasons about human diseases, based on information from the
- * Disease Ontology (DOID) and Wikidata. It illustrates how to load data from
- * different sources (RDF file, SPARQL), and reason about these inputs using
- * rules that are loaded from a file. The rules used here employ existential
- * quantifiers and stratified negation.
+ * This example grounds a given asp encoding in text format or aspif.
+ * It is used to test and to show the grounding of basic elements of the asp core.
  *
  * @author Philipp Hanisch
  */
@@ -120,24 +118,26 @@ public class AspExample {
 			/* Construct grounded knowledge base */
 			startTimeOutput = System.nanoTime();
 			FileWriter fileWriter = new FileWriter(ExamplesUtils.OUTPUT_FOLDER + "grounding_text.lp");
-			Grounder grounder = new Grounder(reasoner, fileWriter, approximatedPredicates, textFormat);
+			Grounder grounder = new Grounder(reasoner, new BufferedWriter(fileWriter), approximatedPredicates, textFormat);
 
-			for (Fact fact : kb.getFacts()) {
-				if (textFormat) {
-					try {
-						fileWriter.write(fact.getSyntacticRepresentation() + "\n");
-					} catch (IOException e) {
-						System.out.println("An error occurred.");
-						e.printStackTrace();
-					}
-				} else {
-					grounder.writeFactAspif(fact);
-				}
-			}
+			try {
+//				if (textFormat) {
+//					for (Fact fact : kb.getFacts()) {
+//						fileWriter.write(fact.getSyntacticRepresentation() + "\n");
+//					}
+//				} else {
+//					kb.getFacts().forEach(grounder::writeFactAspif);
+//				}
 
-			for (AspRule rule : kb.getAspRules()) {
-				System.out.println(rule);
-				rule.accept(grounder);
+				kb.getAspRules().forEach(rule -> {
+					System.out.println(rule);
+					rule.accept(grounder);
+				});
+
+				fileWriter.write("0\n");
+			} catch (IOException e) {
+				System.out.println("An error occurred.");
+				e.printStackTrace();
 			}
 
 			fileWriter.close();
@@ -147,69 +147,8 @@ public class AspExample {
 		endTimeOverall = System.nanoTime();
 
 		// System.out.println("TIMING [s] # " + instance + " # VLog # " + ((float) (endTimeVLog - startTimeVLog) / 1000000000));
-		System.out.println("TIMING [s] # " + instance + " # Improved # " + ((float) (endTimeOutput - startTimeOutput) / 1000000000));
-		System.out.println("TIMING [s] # " + instance + " # ImprovedOverall # " + ((float) (endTimeOverall - startTimeOverall) / 1000000000));
-	}
-
-	/**
-	 * Returns a template string for the given rule where every predicate is replaced by a placeholder
-	 * Safe predicates in the body are removed.
-	 *
-	 * @param rule the rule for which the template should be build
-	 * @param unsafePredicates a set of predicates that might be approximated (=unsafe)
-	 * @return the template for grounding the rule based on facts
-	 */
-	public static String buildRuleTemplate(Rule rule, Set<Predicate> unsafePredicates) {
-		StringBuilder builder = new StringBuilder();
-
-		builder.append(rule.getHead().getSyntacticRepresentation());
-
-		// build body while ignoring save predicates
-		boolean first = true;
-		for (Literal literal : rule.getBody()) {
-			if (!unsafePredicates.contains(literal.getPredicate())) {
-				continue;
-			}
-
-			if (first) {
-				builder.append(" :- ");
-				first = false;
-			} else {
-				builder.append(", ");
-			}
-
-			builder.append(literal.getSyntacticRepresentation().replace("~", "not "));
-		}
-
-		builder.append(" .\n");
-
-		// replace predicate names with placeholders
-		String template = builder.toString();
-		Iterator<UniversalVariable> iterator = rule.getUniversalVariables().iterator();
-		int i = 1;
-		while (iterator.hasNext()) {
-			template = template.replaceAll(iterator.next().getSyntacticRepresentation().replaceAll("\\?", "\\\\?"), "\\%" + String.valueOf(i) + "\\$s");
-			i++;
-		}
-		System.out.println(template);
-
-		return template;
-	}
-
-	public static void writeKnowledgeBaseToFile(KnowledgeBase kb, String fileName) {
-		try {
-			FileWriter fileWriter = new FileWriter(fileName);
-			for (Fact fact : kb.getFacts()) {
-				fileWriter.write(getAspRepresentation(fact));
-			}
-			for (Rule rule : kb.getRules()) {
-				fileWriter.write(getAspRepresentation(rule));
-			}
-			fileWriter.close();
-		} catch (IOException e) {
-			System.out.println("An error occurred.");
-			e.printStackTrace();
-	    }
+		System.out.println("TIMING [s] # " + instance + " # StateOfPentecost # " + ((float) (endTimeOutput - startTimeOutput) / 1000000000));
+		System.out.println("TIMING [s] # " + instance + " # StateOfPentecostOverall # " + ((float) (endTimeOverall - startTimeOverall) / 1000000000));
 	}
 
 	public static String getAspRepresentation(Entity entity) {
