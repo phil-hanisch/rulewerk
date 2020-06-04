@@ -118,15 +118,17 @@ public class AspExample {
 			/* Construct grounded knowledge base */
 			startTimeOutput = System.nanoTime();
 			FileWriter fileWriter = new FileWriter(ExamplesUtils.OUTPUT_FOLDER + "grounding_text.lp");
-			Grounder grounder = new Grounder(reasoner, new BufferedWriter(fileWriter), approximatedPredicates, textFormat);
+			BufferedWriter writer = new BufferedWriter(fileWriter);
+			Grounder grounder = new Grounder(reasoner, writer, approximatedPredicates, textFormat);
 
 			try {
+				writer.write("asp 1 0 0\n");
 //				if (textFormat) {
 //					for (Fact fact : kb.getFacts()) {
 //						fileWriter.write(fact.getSyntacticRepresentation() + "\n");
 //					}
 //				} else {
-//					kb.getFacts().forEach(grounder::writeFactAspif);
+					kb.getFacts().forEach(grounder::writeFactAspif);
 //				}
 
 				kb.getAspRules().forEach(rule -> {
@@ -134,13 +136,15 @@ public class AspExample {
 					rule.accept(grounder);
 				});
 
-				fileWriter.write("0\n");
+				kb.getShowStatements().forEach(grounder::groundShowStatement);
+
+				writer.write("0\n");
 			} catch (IOException e) {
 				System.out.println("An error occurred.");
 				e.printStackTrace();
 			}
 
-			fileWriter.close();
+			writer.close();
 			endTimeOutput = System.nanoTime();
 		}
 

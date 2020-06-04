@@ -50,4 +50,6 @@ public interface AspifIndex {
 	int getAspifInteger(Literal literal, Map<Variable, Long> groundingMap, int context);
 
 	int getAspifInteger(Fact fact);
+
+    int getAspifInteger(Predicate predicate, long[] termIds);
 }

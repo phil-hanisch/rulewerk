@@ -418,6 +418,16 @@ public class KnowledgeBase implements Iterable<Statement> {
 	}
 
 	/**
+	 * Get the list of all show statements that have been added to the knowledge base. The
+	 * list is read-only and cannot be modified to add or delete rules.
+	 *
+	 * @return list of {@link ShowStatement}s
+	 */
+	public List<ShowStatement> getShowStatements() {
+		return this.getStatementsByType(ShowStatement.class);
+	}
+
+	/**
 	 * Get the list of all facts that have been added to the knowledge base. The
 	 * list is read-only and cannot be modified to add or delete facts.
 	 *

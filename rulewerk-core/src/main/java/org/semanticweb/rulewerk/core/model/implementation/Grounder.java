@@ -97,51 +97,80 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	// ========== General parts for all grounding formats ==========
 
 	/**
+	 * Ground the given show statement.
+	 *
+	 * @param statement the show statement to ground
+	 */
+	public void groundShowStatement(ShowStatement statement) {
+		PositiveLiteral literal = statement.getQueryLiteral();
+
+		try (final karmaresearch.vlog.QueryResultIterator answers = reasoner.answerQueryInNativeFormat(literal, true)) {
+			// each query result represents a grounding
+			while(answers.hasNext()) {
+				long[] terms = answers.next();
+				try {
+					writeShowStatementAspif(statement, terms);
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (NotStartedException e) {
+					// Should not happen, we just did a query ...
+				}
+			}
+		}
+	}
+
+	/**
 	 * Grounds an asp rule (constraint or disjunctive rule) and writes it via the file writer
 	 *
 	 * @param disjunctiveRule whether the rule is a disjunctive rule
 	 * @param rule the rule to ground
 	 */
 	public void groundRule(AspRule rule, boolean disjunctiveRule) throws IOException {
-		PositiveLiteral literal = rule.getHelperLiteral();
-		Map<Variable, Long> answerMap = new HashMap<>();
-		List<Variable> variables = literal.getUniversalVariables().collect(Collectors.toList());
+		// If the rule head has exactly one literal, whose predicate is not approximated, there is no reason to ground
+		// the rule because VLog knows already which of the grounded literals are true.
+		List<PositiveLiteral> headLiterals = rule.getHeadLiterals().getLiterals();
+		if (!(headLiterals.size() == 1 && !approximatedPredicates.contains(headLiterals.get(0).getPredicate()))) {
+			PositiveLiteral literal = rule.getHelperLiteral();
+			Map<Variable, Long> answerMap = new HashMap<>();
+			List<Variable> variables = literal.getUniversalVariables().collect(Collectors.toList());
 
-		long startTime = System.nanoTime();
-		int counter = 0;
+			long startTime = System.nanoTime();
+			int counter = 0;
 
-		try (final karmaresearch.vlog.QueryResultIterator answers = reasoner.answerQueryInNativeFormat(literal, true)) {
-			// each query result represents a grounding
-			while(answers.hasNext()) {
-				counter++;
-				long[] terms = answers.next();
+			try (final karmaresearch.vlog.QueryResultIterator answers = reasoner.answerQueryInNativeFormat(literal, true)) {
+				// each query result represents a grounding
+				while(answers.hasNext()) {
+					counter++;
+					long[] terms = answers.next();
+//					writer.write(rule.getSyntacticRepresentation() + "\n");
 
-				for (int i = 0; i < terms.length; i++) {
-					answerMap.put(variables.get(i), terms[i]);
+					for (int i = 0; i < terms.length; i++) {
+						answerMap.put(variables.get(i), terms[i]);
+					}
+
+	//				if (this.textFormat) {
+	//					groundedRule = rule.ground(approximatedPredicates, answerMap);
+	//					try {
+	//						writer.write(groundedRule);
+	//					} catch (IOException e) {
+	//						System.out.println("An error occurred.");
+	//						e.printStackTrace();
+	//					}
+	//				} else {
+					writeRuleInstanceAspif(rule, answerMap, disjunctiveRule);
+	//				}
 				}
-
-//				if (this.textFormat) {
-//					groundedRule = rule.ground(approximatedPredicates, answerMap);
-//					try {
-//						writer.write(groundedRule);
-//					} catch (IOException e) {
-//						System.out.println("An error occurred.");
-//						e.printStackTrace();
-//					}
-//				} else {
-				writeRuleInstanceAspif(rule, answerMap, disjunctiveRule);
-//				}
 			}
-		}
 
-		long endTime = System.nanoTime();
-		System.out.println("Timing for rule " + rule.getSyntacticRepresentation());
-		System.out.println("Duration: " + ((endTime - startTime) / 1000000) + " ms");
-		System.out.println("Instances: " + counter);
-		if (counter > 0) {
-			System.out.println("Duration per instance: " + ((endTime - startTime) / counter ) + " ns");
+			long endTime = System.nanoTime();
+			System.out.println("Timing for rule " + rule.getSyntacticRepresentation());
+			System.out.println("Duration: " + ((endTime - startTime) / 1000000) + " ms");
+			System.out.println("Instances: " + counter);
+			if (counter > 0) {
+				System.out.println("Duration per instance: " + ((endTime - startTime) / counter ) + " ns");
+			}
+			System.out.println();
 		}
-		System.out.println();
 	}
 
 	/**
@@ -184,7 +213,8 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 //					}
 //				} else {
 					// helper integer for body (get and write)
-					int bodyHelpInteger = 1; // = aspifIndex.getAspifInteger(literal, answerMap);
+//					writer.write(rule.getSyntacticRepresentation() + "\n");
+					int bodyHelpInteger = aspifIndex.getAspifInteger(literal, answerMap);
 					writer.write("1 0 1 " + bodyHelpInteger); // rule statement for disjunctive rule with a head literal
 					writeNormalBodyAspif(rule.getBody(), answerMap);
 
@@ -198,7 +228,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 					// if there are bounds, take care that they are satisfied
 					if (rule.hasLowerBound()) {
 						// introduce integer to check if enough elements has been chosen
-						int lowerBoundInteger = 1; // = aspifIndex.getAspifInteger(literal, answerMap, 0);
+						int lowerBoundInteger = aspifIndex.getAspifInteger(literal, answerMap, 0);
 						writer.write("1 0 1 " + lowerBoundInteger); // rule statement for a disjunctive rule with a single head literal
 						writer.write(" 1 " + rule.getLowerBound() + " " + choiceElementToCountIntegers.size()); // weighted body
 						for (Integer choiceElementToCount : choiceElementToCountIntegers) {
@@ -211,7 +241,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 					}
 					if (rule.hasUpperBound()) {
 						// introduce integer to check if too many elements has been chosen
-						int upperBoundInteger = 1; // aspifIndex.getAspifInteger(literal, answerMap, 1);
+						int upperBoundInteger = aspifIndex.getAspifInteger(literal, answerMap, 1);
 						writer.write("1 0 1 " + upperBoundInteger); // rule statement for a disjunctive rule with a single head literal
 						writer.write(" 1 " + (rule.getUpperBound() + 1) + " " + choiceElementToCountIntegers.size()); // weighted body
 						for (Integer choiceElementToCount : choiceElementToCountIntegers) {
@@ -286,7 +316,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		if (disjunctiveRule) {
 			writer.write(" " + rule.getHeadLiterals().getLiterals().size()); // #headLiterals
 			for (Literal literal : rule.getHeadLiterals().getLiterals()) {
-				writer.write(" " + 1); // aspifIndex.getAspifInteger(literal, answerMap));
+				writer.write(" " + aspifIndex.getAspifInteger(literal, answerMap));
 			}
 		} else {
 			writer.write(" 0"); // #headLiteral = 0
@@ -420,12 +450,45 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 * @param fact the fact to write
 	 */
 	public void writeFactAspif(Fact fact) {
-		String aspifFact = "1 0 1 " + aspifIndex.getAspifInteger(fact) + " 0 0\n";
-		try {
-			writer.write(aspifFact);
-		} catch (IOException e) {
-			System.out.println("An error occurred.");
-			e.printStackTrace();
+		if (approximatedPredicates.contains(fact.getPredicate())) {
+			String aspifFact = "1 0 1 " + aspifIndex.getAspifInteger(fact) + " 0 0\n";
+			try {
+				writer.write(aspifFact);
+			} catch (IOException e) {
+				System.out.println("An error occurred.");
+				e.printStackTrace();
+			}
 		}
+	}
+
+	public void writeShowStatementAspif(ShowStatement statement, long[] termIds) throws IOException, NotStartedException {
+		Predicate predicate = statement.getPredicate();
+		writer.write("4 "); // show statement
+
+		StringBuilder symbolicRepresentation = new StringBuilder();
+		symbolicRepresentation.append(predicate.getName());
+		boolean firstConstant = true;
+		for (long termId : termIds) {
+			if (firstConstant) {
+				symbolicRepresentation.append("(");
+				firstConstant = false;
+			} else {
+				symbolicRepresentation.append(",");
+			}
+
+			symbolicRepresentation.append(reasoner.getConstant(termId));
+		}
+		symbolicRepresentation.append(")");
+
+		writer.write(symbolicRepresentation.length() + " ");
+		writer.write(symbolicRepresentation.toString());
+
+		if (approximatedPredicates.contains(predicate)) {
+			writer.write(" 1 " + aspifIndex.getAspifInteger(predicate, termIds));
+		} else {
+			writer.write(" 0");
+		}
+
+		writer.write("\n");
 	}
 }

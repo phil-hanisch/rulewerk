@@ -78,6 +78,17 @@ public class AspifIndexImpl implements AspifIndex {
 		return literal.isNegated() ? -aspifInteger : aspifInteger;
 	}
 
+	@Override
+	public int getAspifInteger(Predicate predicate, long[] termIds) {
+		String aspifIdentifier = getAspifIdentifier(predicate, termIds);
+		Integer aspifInteger;
+		if ((aspifInteger = this.literalMap.get(aspifIdentifier)) == null) {
+			aspifInteger = this.literalCount++;
+			literalMap.put(aspifIdentifier, aspifInteger);
+		}
+		return aspifInteger;
+	}
+
 	private String getAspifIdentifier(Literal literal, Map<Variable, Long> answerMap) {
 		StringBuilder builder = new StringBuilder();
 		builder.append(literal.getPredicate().getSyntacticRepresentation());
@@ -92,6 +103,15 @@ public class AspifIndexImpl implements AspifIndex {
 					System.out.println(e.getMessage());
 				}
 			}
+		}
+		return builder.toString();
+	}
+
+	private String getAspifIdentifier(Predicate predicate, long[] termIds) {
+		StringBuilder builder = new StringBuilder();
+		builder.append(predicate.getSyntacticRepresentation());
+		for (long termId : termIds) {
+			builder.append("_").append(termId);
 		}
 		return builder.toString();
 	}
