@@ -56,6 +56,7 @@ import org.semanticweb.rulewerk.core.model.api.Rule;
 import org.semanticweb.rulewerk.core.model.api.ChoiceRule;
 import org.semanticweb.rulewerk.core.model.api.DisjunctiveRule;
 import org.semanticweb.rulewerk.core.model.api.Constraint;
+import org.semanticweb.rulewerk.core.model.api.ShowStatement;
 import org.semanticweb.rulewerk.core.model.api.Literal;
 import org.semanticweb.rulewerk.core.model.api.NegativeLiteral;
 import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
@@ -198,6 +199,7 @@ void aspStatement() throws PrefixDeclarationException : {
 	| LOOKAHEAD(disjunctiveRule()) statement = disjunctiveRule() { addStatement(statement); }
 	| statement = constraint() { addStatement(statement); }
 	| statement = fact(FormulaContext.HEAD) { addStatement(statement); }
+	| statement = showStatement() {addStatement(statement);}
     | knowledgeBase = directive() { setKnowledgeBase(knowledgeBase); }
 }
 
@@ -359,6 +361,23 @@ Fact fact(FormulaContext context) throws PrefixDeclarationException : {
 		  throw makeParseExceptionWithCause("Error parsing fact: " + e.getMessage(), e);
       }
     }
+}
+
+ShowStatement showStatement() throws PrefixDeclarationException : {
+	String predicateName;
+	Token arity;
+} {
+	< SHOW > predicateName = predicateName() < SLASH > arity = < INTEGER > < DOT> {
+ 		int nArity;
+		// Do not catch NumberFormatException: < INTEGER > matches must parse as int in Java!
+		nArity = Integer.parseInt(arity.image);
+
+		try {
+			return Expressions.makeShowStatement(predicateName, nArity);
+		} catch (IllegalArgumentException e) {
+			throw makeParseExceptionWithCause("Error parsing fact: " + e.getMessage(), e);
+		}
+ 	}
 }
 
 NegativeLiteral negativeLiteral(FormulaContext context) throws PrefixDeclarationException : {
@@ -679,6 +698,8 @@ TOKEN : {
   | < CHOICE_CLOSE : "}" >
   | < CHOICE_SEMICOLON : ";" >
   | < PIPE : "|" >
+  | < SHOW : "#show" >
+  | < SLASH : "/" >
 }
 
 < DIRECTIVE_ARGUMENTS > TOKEN : {

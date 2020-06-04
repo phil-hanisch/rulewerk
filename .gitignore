@@ -58,4 +58,4 @@ rulewerk-rdf/src/main/data/output/*
 
 # Crossword example
 rulewerk-examples/crosswords
-rulewerk-examples/src/main/data/input/asp/crossword.rls
+rulewerk-examples/src/main/data/input/asp

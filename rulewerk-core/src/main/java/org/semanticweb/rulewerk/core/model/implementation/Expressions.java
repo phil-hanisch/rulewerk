@@ -24,23 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.semanticweb.rulewerk.core.model.api.AbstractConstant;
-import org.semanticweb.rulewerk.core.model.api.Conjunction;
-import org.semanticweb.rulewerk.core.model.api.DatatypeConstant;
-import org.semanticweb.rulewerk.core.model.api.ExistentialVariable;
-import org.semanticweb.rulewerk.core.model.api.Fact;
-import org.semanticweb.rulewerk.core.model.api.LanguageStringConstant;
-import org.semanticweb.rulewerk.core.model.api.Literal;
-import org.semanticweb.rulewerk.core.model.api.NegativeLiteral;
-import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
-import org.semanticweb.rulewerk.core.model.api.Predicate;
-import org.semanticweb.rulewerk.core.model.api.ChoiceElement;
-import org.semanticweb.rulewerk.core.model.api.Rule;
-import org.semanticweb.rulewerk.core.model.api.Constraint;
-import org.semanticweb.rulewerk.core.model.api.ChoiceRule;
-import org.semanticweb.rulewerk.core.model.api.DisjunctiveRule;
-import org.semanticweb.rulewerk.core.model.api.Term;
-import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
+import org.semanticweb.rulewerk.core.model.api.*;
 
 /**
  * This utilities class provides static methods for creating terms and formulas
@@ -409,5 +393,16 @@ public final class Expressions {
 	 */
 	public static ChoiceRule makeChoiceRule(final List<ChoiceElement> head, final Conjunction<Literal> body, final Integer lowerBound, final Integer upperBound) {
 		return new ChoiceRuleImpl(head, body, lowerBound, upperBound, ruleCounter++);
+	}
+
+	/**
+	 * Creates a {@link ShowStatement}.
+	 *
+	 * @param predicateName the name of the predicate that should be shown
+	 * @param arity the arity of the predicate that should be shown
+	 * @return a {@link ShowStatement} corresponding to the input
+	 */
+	public static ShowStatement makeShowStatement(final String predicateName, final int arity) {
+		return new ShowStatementImpl(new PredicateImpl(predicateName, arity));
 	}
 }
