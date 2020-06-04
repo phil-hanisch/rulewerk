@@ -90,6 +90,12 @@ public class KnowledgeBase implements Iterable<Statement> {
 		}
 
 		@Override
+		public Boolean visit(final ShowStatement statement) {
+			KnowledgeBase.this.showStatements.add(statement);
+			return true;
+		}
+
+		@Override
 		public Boolean visit(final DataSourceDeclaration statement) {
 			KnowledgeBase.this.dataSourceDeclarations.add(statement);
 			return true;
@@ -120,6 +126,12 @@ public class KnowledgeBase implements Iterable<Statement> {
 
 		@Override
 		public Boolean visit(final AspRule statement) {
+			return true;
+		}
+
+		@Override
+		public Boolean visit(ShowStatement statement) {
+			KnowledgeBase.this.showStatements.remove(statement);
 			return true;
 		}
 
@@ -172,6 +184,14 @@ public class KnowledgeBase implements Iterable<Statement> {
 			return null;
 		}
 
+		@Override
+		public Void visit(final ShowStatement statement) {
+			if (this.ownType.equals(ShowStatement.class)) {
+				this.extracted.add((T) statement);
+			}
+			return null;
+		}
+
 		@SuppressWarnings("unchecked")
 		@Override
 		public Void visit(final DataSourceDeclaration statement) {
@@ -204,6 +224,11 @@ public class KnowledgeBase implements Iterable<Statement> {
 	 * base.
 	 */
 	private final Set<DataSourceDeclaration> dataSourceDeclarations = new HashSet<>();
+
+	/**
+	 * Index structure that holds all show statements of this knowledge base.
+	 */
+	private final Set<ShowStatement> showStatements = new HashSet<>();
 
 	/**
 	 * Registers a listener for changes on the knowledge base
