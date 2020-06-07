@@ -458,6 +458,11 @@ public class VLogReasoner implements Reasoner {
 	}
 
 	@Override
+	public long getConstantId(String constantName) throws NotStartedException {
+		return this.vLog.getConstantId(constantName);
+	}
+
+	@Override
 	public String getConstant(long constantId) throws NotStartedException {
 		return this.vLog.getConstant(constantId);
 	}

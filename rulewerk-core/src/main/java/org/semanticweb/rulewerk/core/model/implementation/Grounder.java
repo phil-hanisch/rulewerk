@@ -228,7 +228,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 					// if there are bounds, take care that they are satisfied
 					if (rule.hasLowerBound()) {
 						// introduce integer to check if enough elements has been chosen
-						int lowerBoundInteger = aspifIndex.getAspifInteger(literal, answerMap, 0);
+						int lowerBoundInteger = aspifIndex.getAspifInteger(literal, answerMap, -1);
 						writer.write("1 0 1 " + lowerBoundInteger); // rule statement for a disjunctive rule with a single head literal
 						writer.write(" 1 " + rule.getLowerBound() + " " + choiceElementToCountIntegers.size()); // weighted body
 						for (Integer choiceElementToCount : choiceElementToCountIntegers) {
@@ -241,7 +241,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 					}
 					if (rule.hasUpperBound()) {
 						// introduce integer to check if too many elements has been chosen
-						int upperBoundInteger = aspifIndex.getAspifInteger(literal, answerMap, 1);
+						int upperBoundInteger = aspifIndex.getAspifInteger(literal, answerMap, -2);
 						writer.write("1 0 1 " + upperBoundInteger); // rule statement for a disjunctive rule with a single head literal
 						writer.write(" 1 " + (rule.getUpperBound() + 1) + " " + choiceElementToCountIntegers.size()); // weighted body
 						for (Integer choiceElementToCount : choiceElementToCountIntegers) {

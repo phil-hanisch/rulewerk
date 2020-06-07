@@ -509,6 +509,15 @@ public interface Reasoner extends AutoCloseable, KnowledgeBaseListener {
 	long getOrAddConstantId(String constantName) throws NotStartedException;
 
 	/**
+	 * Get the constant id for a given constant name
+	 *
+	 * @param constantName the constant name to get the id for
+	 * @return the constant id
+	 * @throws NotStartedException
+	 */
+	long getConstantId(String constantName) throws NotStartedException;
+
+	/**
 	 * Get the constant name for a given constant id
 	 * @param constantId the constant id to get the name for
 	 * @return the constant name
