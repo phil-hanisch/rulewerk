@@ -1,72 +1,55 @@
 
 import matplotlib.pyplot as plt
 
-vlog = []
-gringo = []
-output = []
-minimal = []
-optimised = []
-improved = []
-improvedOverall = []
+# component --> (size --> list(duration))
+results = {}
 
-with open('results.txt') as f:
+# get all results
+with open('results_with_duplicates') as f:
     for line in f:
-        instance, component, duration = [elem.strip() for elem in line.split('#')[1:]]
-        instance = instance.lstrip("size")
-        if component == 'VLog':
-            vlog.append((instance, duration))
-        elif component == 'Gringo':
-            gringo.append((instance, duration))
-        elif component == 'Output':
-            output.append((instance, duration))
-        elif component == 'Querying':
-            minimal.append((instance, duration))
-        elif component == 'Optimised':
-            optimised.append((instance, duration))
-        elif component == 'Improved':
-            improved.append((instance, duration))
-        elif component == 'ImprovedOverall':
-            improvedOverall.append((instance, duration))
-print("VLog: ", vlog)
-print("Gringo: ", gringo)
+        size, component, duration = [elem.strip() for elem in line.split('#')[1:]]
+        if ":" in duration:
+            mins, secs = duration.split(":")
+            duration = 60 * float(mins) + float(secs)
+        else:
+            duration = float(duration)
+        size = int(size.lstrip("size"))
 
+        results_for_component = results.get(component, {})
+        results_for_size = results_for_component.get(size, [])
+        results_for_size.append(duration)
+        results_for_component[size] = results_for_size
+        results[component] = results_for_component
+
+# compute average
+averages = {}
+for c in results.keys():
+    averages_by_component = {}
+    for s in results[c].keys():
+        results_for_size = results[c][s]
+        averages_by_component[s] = (sum(results_for_size) / len(results_for_size))
+    averages[c] = averages_by_component
+
+for c in averages.keys():
+    for s in averages[c].keys():
+        print(c, s, averages[c][s])
+        
+# show results
 fig, ax = plt.subplots()  # Create a figure containing a single axes.
-
-# Vlog
-x = [float(instance) for instance,_ in vlog]
-y = [float(duration) for _,duration in vlog]
-ax.scatter(x, y, color="c", label="VLog")
-
-# Output
-x = [float(instance) for instance,_ in output]
-y = [float(duration) for _,duration in output]
-ax.scatter(x, y, label="Unimproved")
-
-
-# Gringo
-x = [float(instance) for instance,_ in gringo]
-y = [float(duration) for _,duration in gringo]
-ax.scatter(x, y, color="r", label="Gringo")
-
-# # Minimal
-# x = [float(instance) for instance,_ in minimal]
-# y = [float(duration) for _,duration in minimal]
-# ax.scatter(x, y, label="Minimal")
-
-# Answering
-x = [float(instance) for instance,_ in optimised]
-y = [float(duration) for _,duration in optimised]
-ax.scatter(x, y, label="Calling VLog", marker="1")
-
-# Improved
-x = [float(instance) for instance,_ in improved]
-y = [float(duration) for _,duration in improved]
-ax.scatter(x, y, label="Optimised", marker="2")
-
-# Overall
-x = [float(instance) for instance,_ in improvedOverall]
-y = [float(duration) for _,duration in improvedOverall]
-ax.scatter(x, y, label="Overall", marker="2", color='k')
+components = ['Gringo', 'VLog', 'Complete', 'CompleteOverall']
+colors = {'Gringo': 'k', 'VLog': 'r', 'Complete': 'green', 'CompleteOverall': 'blue'}
+markers = {'Gringo': 'o'}
+labels = {}
+for component in components:
+    x = []
+    y = []
+    averages_by_component = averages.get(component)
+    for size in averages_by_component.keys():
+        x.append(size)
+        y.append(averages_by_component.get(size))
+    # ax.scatter(x, y, label=labels.get(component, component))
+    print(x, y, component)
+    ax.scatter(x, y, label=labels.get(component, component), color=colors.get(component, 'k'), marker=markers.get(component, 'o'))
 
 ax.set_ylim(bottom=0)
 ax.set_xlim(left=0)
