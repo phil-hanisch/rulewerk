@@ -82,28 +82,24 @@ public class AspExample {
 			System.out.println("Failed to parse rules: " + e.getMessage());
 			return;
 		}
-		System.out.println("Asp rules used in this example:");
-		kb.getAspRules().forEach(System.out::println);
-		System.out.println("");
-
-		// System.out.println("Facts used in this example:");
-		// kb.getFacts().forEach(System.out::println);
-		// System.out.println("");
+//		System.out.println("Asp rules used in this example:");
+//		kb.getAspRules().forEach(System.out::println);
+//		System.out.println();
 
 		// Analyse rule structure
 		Set<Predicate> approximatedPredicates = kb.analyseAspRulesForApproximatedPredicates();
 
-		System.out.println("Approximated predicates");
-		approximatedPredicates.forEach(System.out::println);
-		System.out.println("");
+//		System.out.println("Approximated predicates");
+//		approximatedPredicates.forEach(System.out::println);
+//		System.out.println("");
 
 		// Transform asp rules into standard rules
 		for (AspRule rule : kb.getAspRules()) {
 			kb.addStatements(rule.getApproximation(approximatedPredicates));
 		}
-		System.out.println("Rules used in this example:");
-		kb.getRules().forEach(System.out::println);
-		System.out.println("");
+//		System.out.println("Rules used in this example:");
+//		kb.getRules().forEach(System.out::println);
+//		System.out.println("");
 
 		/* Execute reasoning */
 		startTimeVLog = System.nanoTime();
@@ -119,7 +115,7 @@ public class AspExample {
 			startTimeOutput = System.nanoTime();
 			FileWriter fileWriter = new FileWriter(ExamplesUtils.OUTPUT_FOLDER + "grounding_text.lp");
 			BufferedWriter writer = new BufferedWriter(fileWriter);
-			Grounder grounder = new Grounder(reasoner, writer, approximatedPredicates, textFormat);
+			Grounder grounder = new Grounder(reasoner, kb, writer, approximatedPredicates, textFormat);
 
 			try {
 				writer.write("asp 1 0 0\n");
@@ -151,14 +147,8 @@ public class AspExample {
 		endTimeOverall = System.nanoTime();
 
 		// System.out.println("TIMING [s] # " + instance + " # VLog # " + ((float) (endTimeVLog - startTimeVLog) / 1000000000));
-		System.out.println("TIMING [s] # " + instance + " # StateOfPentecost # " + ((float) (endTimeOutput - startTimeOutput) / 1000000000));
-		System.out.println("TIMING [s] # " + instance + " # StateOfPentecostOverall # " + ((float) (endTimeOverall - startTimeOverall) / 1000000000));
-	}
-
-	public static String getAspRepresentation(Entity entity) {
-		return entity.getSyntacticRepresentation()
-					 .replaceAll("~", "not ")
-					 .replaceAll("fail\\((\\?\\w)?(, \\?\\w)*\\) ", "") + "\n";
+		System.out.println("TIMING [s] # " + instance + " # GoFast # " + ((float) (endTimeOutput - startTimeOutput) / 1000000000));
+		System.out.println("TIMING [s] # " + instance + " # GoFastOverall # " + ((float) (endTimeOverall - startTimeOverall) / 1000000000));
 	}
 }
 

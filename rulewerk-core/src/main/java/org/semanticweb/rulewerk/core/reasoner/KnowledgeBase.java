@@ -691,18 +691,6 @@ public class KnowledgeBase implements Iterable<Statement> {
 		// used to compute the transitive closure
 		Map<Predicate, Set<Predicate>> dependencyMap = new HashMap<>(directDependencyMap);
 
-//		System.out.println("Intial approximated predicates");
-//		approximatedPredicates.forEach(System.out::println);
-//		System.out.println();
-//
-//		System.out.println("Direct dependencies");
-//		directDependencyMap.keySet().forEach(predicate -> {
-//			System.out.print(predicate);
-//			directDependencyMap.get(predicate).forEach(System.out::print);
-//			System.out.println();
-//		});
-//		System.out.println();
-
 		// compute the transitive dependencies
 		boolean done = false;
 		while (!done) {
@@ -733,14 +721,6 @@ public class KnowledgeBase implements Iterable<Statement> {
 			}
 		}
 
-//		System.out.println("Transitive Closure");
-//		dependencyMap.keySet().forEach(predicate -> {
-//			System.out.print(predicate);
-//			dependencyMap.get(predicate).forEach(System.out::print);
-//			System.out.println();
-//		});
-//		System.out.println();
-
 		// as long as a new predicate is marked as approximated, mark all predicates as approximated that use it
 		done = approximatedPredicates.size() == 0;
 		while (!done) {
@@ -754,5 +734,32 @@ public class KnowledgeBase implements Iterable<Statement> {
 		}
 
 		return approximatedPredicates;
+	}
+
+	/**
+	 * Get the set of all constants used in rules and facts of the knowledge base.
+	 *
+	 * @return set of constants
+	 */
+	public Set<Constant> getUsedConstants() {
+		Set<Constant> constants = new HashSet<>();
+
+		getFacts().forEach(fact -> {
+			fact.getTerms().forEach(term -> {
+				if (term.isConstant()) {
+					constants.add((Constant) term);
+				}
+			});
+		});
+
+		getRules().forEach(rule -> {
+			rule.getTerms().forEach(term -> {
+				if (term.isConstant()) {
+					constants.add((Constant) term);
+				}
+			});
+		});
+
+		return constants;
 	}
 }

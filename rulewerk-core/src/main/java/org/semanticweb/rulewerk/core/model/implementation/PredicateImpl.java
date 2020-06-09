@@ -33,7 +33,6 @@ import org.semanticweb.rulewerk.core.model.api.Predicate;
 public class PredicateImpl implements Predicate {
 
 	final private String name;
-
 	final private int arity;
 
 	/**

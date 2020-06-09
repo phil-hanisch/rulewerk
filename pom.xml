@@ -71,6 +71,7 @@
 		<slf4j.version>1.7.28</slf4j.version>
 		<apache.commons.lang.version>3.9</apache.commons.lang.version>
 		<apache.commons.csv.version>1.5</apache.commons.csv.version>
+		<apache.commons.collections.version>4.4</apache.commons.collections.version>
 		<maven.javadoc.version>3.1.1</maven.javadoc.version>
 		<owlapi.version>5.1.11</owlapi.version>
 		<openrdf.sesame.version>2.7.16</openrdf.sesame.version>
@@ -110,6 +111,17 @@
 			<artifactId>commons-csv</artifactId>
 			<version>${apache.commons.csv.version}</version>
 		</dependency>
+		<dependency>
+			<!-- Useful for testing generated csv files -->
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-collections4</artifactId>
+			<version>${apache.commons.collections.version}</version>
+		</dependency>
+        <dependency>
+            <groupId>it.unimi.dsi</groupId>
+            <artifactId>fastutil</artifactId>
+            <version>8.3.1</version>
+        </dependency>
 	</dependencies>
 
 	<build>

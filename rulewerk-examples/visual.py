@@ -30,15 +30,15 @@ for c in results.keys():
         averages_by_component[s] = (sum(results_for_size) / len(results_for_size))
     averages[c] = averages_by_component
 
-for c in averages.keys():
-    for s in averages[c].keys():
-        print(c, s, averages[c][s])
+# for c in averages.keys():
+    # for s in averages[c].keys():
+        # print(c, s, averages[c][s])
         
 # show results
 fig, ax = plt.subplots()  # Create a figure containing a single axes.
-components = ['Gringo', 'VLog', 'Complete', 'CompleteOverall']
-colors = {'Gringo': 'k', 'VLog': 'r', 'Complete': 'green', 'CompleteOverall': 'blue'}
-markers = {'Gringo': 'o'}
+components = ['Gringo', 'VLog', 'GoFast', 'GoFastOverall']
+colors = {'Gringo': 'k', 'VLog': 'r', 'Complete': 'green', 'CompleteOverall': 'blue', 'GoFast': 'skyblue', 'GoFastOverall': 'c'}
+markers = {'Gringo': 'o', 'FastUtilOverall': 'o'}
 labels = {}
 for component in components:
     x = []

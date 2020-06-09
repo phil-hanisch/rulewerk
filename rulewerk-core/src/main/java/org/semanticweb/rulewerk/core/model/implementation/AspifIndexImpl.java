@@ -22,7 +22,10 @@ package org.semanticweb.rulewerk.core.model.implementation;
 
 import karmaresearch.vlog.NotStartedException;
 import org.semanticweb.rulewerk.core.model.api.*;
+import org.semanticweb.rulewerk.core.reasoner.KnowledgeBase;
 import org.semanticweb.rulewerk.core.reasoner.Reasoner;
+import org.apache.commons.collections4.map.HashedMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,11 +41,10 @@ public class AspifIndexImpl implements AspifIndex {
 	final private Map<String, Integer> literalMap;
 	final private Reasoner reasoner;
 
-
 	public AspifIndexImpl(Reasoner reasoner) {
 		this.reasoner = reasoner;
 		this.literalCount = 1;
-		this.literalMap = new HashMap<>();
+		this.literalMap = new Object2IntOpenHashMap<>();
 	}
 
 	@Override
