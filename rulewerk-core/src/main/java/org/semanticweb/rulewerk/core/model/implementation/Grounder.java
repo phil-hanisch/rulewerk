@@ -43,26 +43,29 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
  */
 public class Grounder implements AspRuleVisitor<Boolean> {
 
+	final private KnowledgeBase knowledgeBase;
 	final private Set<Predicate> approximatedPredicates;
 	final private List<Predicate> approximatedPredicatesList;
 	final private Reasoner reasoner;
 	final private BufferedWriter writer;
 	final private boolean textFormat;
-	final int numberOfConstants;
-	final int numberOfRules;
-	final int numberOfPredicates;
-	final AbstractLong2IntMap aspifMap;
-	int aspifCounter;
+	final private int numberOfConstants;
+	final private int numberOfRules;
+	final private int numberOfPredicates;
+	final private AbstractLong2IntMap aspifMap;
+	private int aspifCounter;
 
 	/**
 	 * The constructor.
 	 *
 	 * @param reasoner the reasoner with the information for the grounding
+	 * @param knowledgeBase the knowledge base for which the grounder should be used
 	 * @param writer a file writer for writing the grounded rules
 	 * @param approximatedPredicates set of approximated predicates
-	 * @param textFormat determines if the grounding format is textual
+	 * @param textFormat whether to ground in text format or not
 	 */
 	public Grounder(Reasoner reasoner, KnowledgeBase knowledgeBase, BufferedWriter writer, Set<Predicate> approximatedPredicates, boolean textFormat) {
+		this.knowledgeBase = knowledgeBase;
 		this.reasoner = reasoner;
 		this.writer = writer;
 		this.approximatedPredicates = approximatedPredicates;
@@ -73,6 +76,44 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		this.numberOfPredicates = approximatedPredicates.size();
 		this.aspifMap = new Long2IntOpenHashMap();
 		this.aspifCounter = 1;
+	}
+
+	/**
+	 * Ground the knowledge base.
+	 */
+	public void groundKnowledgeBase() {
+		if (this.textFormat) {
+			this.knowledgeBase.getFacts().forEach(fact -> {
+				try {
+					writer.write(fact.getSyntacticRepresentation() + "\n");
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			});
+
+			this.knowledgeBase.getAspRules().forEach(rule -> {
+				rule.accept(this);
+			});
+
+			// TODO: Ground show statements
+		} else {
+			try {
+				this.writer.write("asp 1 0 0");
+				this.writer.newLine();
+
+				this.knowledgeBase.getFacts().forEach(this::writeFactAspif);
+				this.knowledgeBase.getAspRules().forEach(rule -> {
+					rule.accept(this);
+				});
+				this.knowledgeBase.getShowStatements().forEach(this::groundShowStatement);
+
+				this.writer.write("0");
+				this.writer.newLine();
+			} catch (IOException e) {
+				System.out.println("An error occurred.");
+				e.printStackTrace();
+			}
+		}
 	}
 
 	@Override

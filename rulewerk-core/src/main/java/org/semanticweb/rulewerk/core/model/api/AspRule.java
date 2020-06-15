@@ -107,7 +107,7 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	 * @return a positive helper literal
 	 */
 	default PositiveLiteral getHelperLiteral() {
-		String predicateName = "rule_" + this.getRuleIdx();
+		String predicateName = "rule" + this.getRuleIdx();
 		List<Term> terms = this.getBody().getUniversalVariables().collect(Collectors.toList());
 		Predicate predicate = new PredicateImpl(predicateName, terms.size());
 		return new PositiveLiteralImpl(predicate, terms);
@@ -122,8 +122,14 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	 */
 	default PositiveLiteral getHelperLiteral(List<Term> terms, int... indices) {
 		StringBuilder predicateName = new StringBuilder("rule");
+		boolean first = true;
 		for (int i : indices) {
-			predicateName.append("_").append(i);
+			if (first) {
+				first = false;
+			} else {
+				predicateName.append("A");
+			}
+			predicateName.append(i);
 		}
 		Predicate predicate = new PredicateImpl(predicateName.toString(), terms.size());
 		return new PositiveLiteralImpl(predicate, terms);

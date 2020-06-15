@@ -20,61 +20,59 @@ package org.semanticweb.rulewerk.examples;
  * #L%
  */
 
-import java.io.BufferedWriter;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Set;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Iterator;
-import java.util.ArrayList;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
+import java.io.*;
+import java.util.*;
+import org.apache.commons.cli.*;
 import org.semanticweb.rulewerk.core.model.implementation.Grounder;
 import org.semanticweb.rulewerk.core.reasoner.KnowledgeBase;
 import org.semanticweb.rulewerk.core.reasoner.LogLevel;
 import org.semanticweb.rulewerk.core.reasoner.Reasoner;
-import org.semanticweb.rulewerk.core.reasoner.QueryResultIterator;
 import org.semanticweb.rulewerk.core.reasoner.implementation.VLogReasoner;
 import org.semanticweb.rulewerk.parser.ParsingException;
 import org.semanticweb.rulewerk.parser.RuleParser;
 import org.semanticweb.rulewerk.core.model.api.AspRule;
-import org.semanticweb.rulewerk.core.model.api.Rule;
-import org.semanticweb.rulewerk.core.model.api.Entity;
-import org.semanticweb.rulewerk.core.model.api.Fact;
-import org.semanticweb.rulewerk.core.model.api.Variable;
 import org.semanticweb.rulewerk.core.model.api.Predicate;
-import org.semanticweb.rulewerk.core.model.api.UniversalVariable;
-import org.semanticweb.rulewerk.core.model.api.Term;
-import org.semanticweb.rulewerk.core.model.api.Literal;
-import org.semanticweb.rulewerk.core.model.api.PositiveLiteral;
-import org.semanticweb.rulewerk.core.model.api.Conjunction;
-import org.semanticweb.rulewerk.core.model.implementation.RuleImpl;
-import org.semanticweb.rulewerk.core.model.implementation.ConjunctionImpl;
 
 /**
- * This example grounds a given asp encoding in text format or aspif.
- * It is used to test and to show the grounding of basic elements of the asp core.
+ * This example grounds a given asp encoding by using VLog. The grounding can be shown either in a textual format or in
+ * aspif. Alternatively, the grounding can be forwarded to clasp to compute the answer set(s).
  *
  * @author Philipp Hanisch
  */
 public class AspExample {
 
 	public static void main(final String[] args) throws IOException, ParsingException {
-		String instance = args[0];
 		long startTimeOverall, startTimeVLog, startTimeOutput, endTimeOverall, endTimeVLog, endTimeOutput;
+		String instance;
+		CommandLine line;
+		boolean textFormat;
+		BufferedWriter outputWriter;
+
+		// Get start time
 		startTimeOverall = System.nanoTime();
 
-		boolean textFormat = false;
+		// Prepare command line options
+		Options options = new Options();
+		options.addOption(Option.builder("t").longOpt("text").desc("Display the grounding in a human-readable format").build());
+		options.addOption(Option.builder("a").longOpt("aspif").desc("Display the grounding in aspif").build());
+		options.addOption(Option.builder("o").longOpt("output").desc("Determine the output file").required().hasArg().numberOfArgs(1).build());
 
-		ExamplesUtils.configureLogging();
+		// Parse command line arguments
+		CommandLineParser parser = new DefaultParser();
+		try {
+			// parse the command line arguments
+			line = parser.parse( options, args );
+			instance = line.getArgs()[0];
+			textFormat = line.hasOption("t");
+			outputWriter = new BufferedWriter(new FileWriter(ExamplesUtils.OUTPUT_FOLDER + line.getOptionValue("o")));
+		} catch (ParseException exp) {
+			System.err.println( "Parsing failed.  Reason: " + exp.getMessage() );
+			return;
+		}
 
 		// Load rules and facts from asp file
+		ExamplesUtils.configureLogging();
+		System.out.println("Load rules and facts...");
 		KnowledgeBase kb;
 		try {
 			kb = RuleParser.parseAsp(new FileInputStream(ExamplesUtils.INPUT_FOLDER + "asp/" + instance));
@@ -82,24 +80,14 @@ public class AspExample {
 			System.out.println("Failed to parse rules: " + e.getMessage());
 			return;
 		}
-//		System.out.println("Asp rules used in this example:");
-//		kb.getAspRules().forEach(System.out::println);
-//		System.out.println();
 
-		// Analyse rule structure
+		// Analyse knowledge base
 		Set<Predicate> approximatedPredicates = kb.analyseAspRulesForApproximatedPredicates();
-
-//		System.out.println("Approximated predicates");
-//		approximatedPredicates.forEach(System.out::println);
-//		System.out.println("");
 
 		// Transform asp rules into standard rules
 		for (AspRule rule : kb.getAspRules()) {
 			kb.addStatements(rule.getApproximation(approximatedPredicates));
 		}
-//		System.out.println("Rules used in this example:");
-//		kb.getRules().forEach(System.out::println);
-//		System.out.println("");
 
 		/* Execute reasoning */
 		startTimeVLog = System.nanoTime();
@@ -111,46 +99,46 @@ public class AspExample {
 			reasoner.reason();
 			endTimeVLog = System.nanoTime();
 
-			/* Construct grounded knowledge base */
 			startTimeOutput = System.nanoTime();
-			FileWriter fileWriter = new FileWriter(ExamplesUtils.OUTPUT_FOLDER + "grounding_text.lp");
-			BufferedWriter writer = new BufferedWriter(fileWriter);
-			Grounder grounder = new Grounder(reasoner, kb, writer, approximatedPredicates, textFormat);
+			if (line.hasOption("t") || line.hasOption("a")) {
+				// Compute only the grounding
+				Grounder grounder = new Grounder(reasoner, kb, outputWriter, approximatedPredicates, textFormat);
+				grounder.groundKnowledgeBase();
+				outputWriter.close();
+				endTimeOutput = System.nanoTime();
+			} else {
+				// Compute the answer sets
+				Process clasp = Runtime.getRuntime().exec("clasp");
+				BufferedWriter writerToClasp = new BufferedWriter(new OutputStreamWriter(clasp.getOutputStream()));
+				Grounder grounder = new Grounder(reasoner, kb, writerToClasp, approximatedPredicates, false);
+				grounder.groundKnowledgeBase();
+				writerToClasp.close();
+				endTimeOutput = System.nanoTime();
 
-			try {
-				writer.write("asp 1 0 0\n");
-//				if (textFormat) {
-//					for (Fact fact : kb.getFacts()) {
-//						fileWriter.write(fact.getSyntacticRepresentation() + "\n");
-//					}
-//				} else {
-					kb.getFacts().forEach(grounder::writeFactAspif);
-//				}
-
-				kb.getAspRules().forEach(rule -> {
-					System.out.println(rule);
-					rule.accept(grounder);
-				});
-
-				kb.getShowStatements().forEach(grounder::groundShowStatement);
-
-				writer.write("0\n");
-			} catch (IOException e) {
-				System.out.println("An error occurred.");
-				e.printStackTrace();
+				// Show the answer set
+				try {
+					clasp.waitFor();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				BufferedReader readerFromClasp = new BufferedReader(new InputStreamReader(clasp.getInputStream()));
+				String s;
+				while ((s = readerFromClasp.readLine()) != null) {
+					outputWriter.write(s);
+					outputWriter.newLine();
+				}
+				outputWriter.close();
+				clasp.destroy();
 			}
-
-			writer.close();
-			endTimeOutput = System.nanoTime();
 		}
 
 		endTimeOverall = System.nanoTime();
-
-		// System.out.println("TIMING [s] # " + instance + " # VLog # " + ((float) (endTimeVLog - startTimeVLog) / 1000000000));
-		System.out.println("TIMING [s] # " + instance + " # GoFast # " + ((float) (endTimeOutput - startTimeOutput) / 1000000000));
-		System.out.println("TIMING [s] # " + instance + " # GoFastOverall # " + ((float) (endTimeOverall - startTimeOverall) / 1000000000));
+		System.out.println("TIMING [s] # " + instance + " # VLog # " + ((float) (endTimeVLog - startTimeVLog) / 1000000000));
+		System.out.println("TIMING [s] # " + instance + " # Native # " + ((float) (endTimeOutput - startTimeOutput) / 1000000000));
+		System.out.println("TIMING [s] # " + instance + " # NativeOverall # " + ((float) (endTimeOverall - startTimeOverall) / 1000000000));
 	}
 }
+
 
 
 
