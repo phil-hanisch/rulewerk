@@ -762,4 +762,22 @@ public class KnowledgeBase implements Iterable<Statement> {
 
 		return constants;
 	}
+
+	/**
+	 * Get the set of all predicates used in rules and facts of the knowledge base.
+	 *
+	 * @return set of predicates
+	 */
+	public Set<Predicate> getPredicates() {
+		Set<Predicate> predicates = new HashSet<>();
+
+		getFacts().forEach(fact -> predicates.add(fact.getPredicate()));
+
+		getRules().forEach(rule -> {
+			rule.getHead().getLiterals().forEach(literal -> predicates.add(literal.getPredicate()));
+			rule.getBody().getLiterals().forEach(literal -> predicates.add(literal.getPredicate()));
+		});
+
+		return predicates;
+	}
 }

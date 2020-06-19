@@ -22,8 +22,12 @@ package org.semanticweb.rulewerk.examples;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
+
 import org.apache.commons.cli.*;
+import org.semanticweb.rulewerk.core.model.api.ShowStatement;
 import org.semanticweb.rulewerk.core.model.implementation.Grounder;
+import org.semanticweb.rulewerk.core.model.implementation.ShowStatementImpl;
 import org.semanticweb.rulewerk.core.reasoner.KnowledgeBase;
 import org.semanticweb.rulewerk.core.reasoner.LogLevel;
 import org.semanticweb.rulewerk.core.reasoner.Reasoner;
@@ -99,6 +103,12 @@ public class AspExample {
 		}
 		System.out.println("...done");
 		endTimeParsing = System.nanoTime();
+
+		// no show statement implies to show everything
+		if (kb.getShowStatements().isEmpty()) {
+			List<ShowStatement> showStatements = kb.getPredicates().stream().map(ShowStatementImpl::new).collect(Collectors.toList());
+			kb.addStatements(showStatements);
+		}
 
 		// Analyse knowledge base
 		Set<Predicate> approximatedPredicates = kb.analyseAspRulesForApproximatedPredicates();
