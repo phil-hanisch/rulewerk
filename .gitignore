@@ -57,5 +57,5 @@ rulewerk-rdf/src/main/data/output/*
 /TAGS
 
 # Crossword example
-rulewerk-examples/crosswords
+rulewerk-examples/analytics
 rulewerk-examples/src/main/data/input/asp

@@ -10,13 +10,12 @@ vertex(5) .
 edge(1,2) .
 edge(2,3) .
 edge(3,4) .
-edge(4,5) .
-edge(5,1) .
+edge(4,1) .
 
 % achieved: equality predicate for colours
 equal(?X, ?X) :- colour(?X) .
 
-{ coloured(?X, ?C) : colour(?C) } :- vertex(?X) .
+1 { coloured(?X, ?C) : colour(?C) } 1 :- vertex(?X) .
 % coloured(?X, blue), coloured(?X, red) :- vertex(?X) .
 % coloured(?X, blue) :- vertex(?X) .
 % achieved: every vertex is coloured
@@ -27,4 +26,4 @@ equal(?X, ?X) :- colour(?X) .
 :- edge(?X,?Y), coloured(?X, ?C), coloured(?Y, ?C) .
 % achieved: vertices that are neighbours do not have the same colour
 
-A(?X) :- C(?X, ?Y), not A(?Y) .
+#show coloured/2 .

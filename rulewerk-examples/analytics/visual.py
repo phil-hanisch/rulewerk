@@ -36,8 +36,8 @@ for c in results.keys():
         
 # show results
 fig, ax = plt.subplots()  # Create a figure containing a single axes.
-components = ['Gringo', 'VLog', 'GoFast', 'GoFastOverall']
-colors = {'Gringo': 'k', 'VLog': 'r', 'Complete': 'green', 'CompleteOverall': 'blue', 'GoFast': 'skyblue', 'GoFastOverall': 'c'}
+components = ['Gringo', 'VLog', 'rulewerk', 'rulewerkOverall', 'Clingo', 'GoFastOverall']
+colors = {'Gringo': 'k', 'VLog': 'r', 'rulewerk': 'green', 'rulewerkOverall': 'blue', 'Clingo': 'skyblue', 'GoFastOverall': 'c'}
 markers = {'Gringo': 'o', 'FastUtilOverall': 'o'}
 labels = {}
 for component in components:

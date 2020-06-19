@@ -71,7 +71,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		this.approximatedPredicates = approximatedPredicates;
 		this.approximatedPredicatesList = new LinkedList<>(approximatedPredicates);
 		this.textFormat = textFormat;
-		this.numberOfConstants = knowledgeBase.getUsedConstants().size();
+		this.numberOfConstants = knowledgeBase.getConstants().size();
 		this.numberOfRules = knowledgeBase.getAspRules().size();
 		this.numberOfPredicates = approximatedPredicates.size();
 		this.aspifMap = new Long2IntOpenHashMap();
@@ -583,6 +583,14 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 			aspifLongIdentifier = aspifLongIdentifier * base + id + 1;
 		}
 		aspifLongIdentifier = aspifLongIdentifier * (numberOfPredicates + numberOfRules) + predicateId;
+//		StringBuilder aspifLongIdentifier = new StringBuilder();
+//		aspifLongIdentifier.append(predicateId);
+//		for (long id : context) {
+//			aspifLongIdentifier.append(":").append(id);
+//		}
+//		for (long id : termIds) {
+//			aspifLongIdentifier.append(",").append(id);
+//		}
 
 		int aspifValue;
 		if (this.aspifMap.containsKey(aspifLongIdentifier)) {

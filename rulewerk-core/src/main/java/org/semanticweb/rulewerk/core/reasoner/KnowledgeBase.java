@@ -741,7 +741,7 @@ public class KnowledgeBase implements Iterable<Statement> {
 	 *
 	 * @return set of constants
 	 */
-	public Set<Constant> getUsedConstants() {
+	public Set<Constant> getConstants() {
 		Set<Constant> constants = new HashSet<>();
 
 		getFacts().forEach(fact -> {
