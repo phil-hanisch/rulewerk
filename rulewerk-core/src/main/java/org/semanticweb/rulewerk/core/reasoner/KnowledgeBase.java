@@ -9,9 +9,9 @@ package org.semanticweb.rulewerk.core.reasoner;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * 
  *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -233,7 +233,7 @@ public class KnowledgeBase implements Iterable<Statement> {
 	/**
 	 * Registers a listener for changes on the knowledge base
 	 *
-	 * @param listener
+	 * @param listener a KnowledgeBaseListener
 	 */
 	public void addListener(final KnowledgeBaseListener listener) {
 		this.listeners.add(listener);
@@ -242,7 +242,7 @@ public class KnowledgeBase implements Iterable<Statement> {
 	/**
 	 * Unregisters given listener from changes on the knowledge base
 	 *
-	 * @param listener
+	 * @param listener KnowledgeBaseListener
 	 */
 	public void deleteListener(final KnowledgeBaseListener listener) {
 		this.listeners.remove(listener);
@@ -536,7 +536,7 @@ public class KnowledgeBase implements Iterable<Statement> {
 			throws RulewerkException, IOException, IllegalArgumentException {
 		Validate.notNull(file, "file must not be null");
 
-		boolean isNewFile = importedFilePaths.add(file.getCanonicalPath());
+		boolean isNewFile = this.importedFilePaths.add(file.getCanonicalPath());
 		Validate.isTrue(isNewFile, "file \"" + file.getName() + "\" was already imported.");
 
 		try (InputStream stream = new FileInputStream(file)) {
@@ -592,7 +592,7 @@ public class KnowledgeBase implements Iterable<Statement> {
 
 	/**
 	 * Resolve a prefixed name into an absolute IRI. Dual to
-	 * {@link unresolveAbsoluteIri}.
+	 * {@link KnowledgeBase#unresolveAbsoluteIri}.
 	 *
 	 * @param prefixedName the prefixed name to resolve.
 	 *
@@ -606,7 +606,7 @@ public class KnowledgeBase implements Iterable<Statement> {
 
 	/**
 	 * Potentially abbreviate an absolute IRI using the declared prefixes. Dual to
-	 * {@link resolvePrefixedName}.
+	 * {@link KnowledgeBase#resolvePrefixedName}.
 	 *
 	 * @param iri the absolute IRI to abbreviate.
 	 *
@@ -622,22 +622,22 @@ public class KnowledgeBase implements Iterable<Statement> {
 	 *
 	 * @param stream the {@link OutputStream} to serialise to.
 	 *
-	 * @throws IOException
+	 * @throws IOException if an I/O error occurs while writing to given output stream
 	 */
 	public void writeKnowledgeBase(OutputStream stream) throws IOException {
 		stream.write(Serializer.getBaseAndPrefixDeclarations(this).getBytes());
 
-		for (DataSourceDeclaration dataSource : getDataSourceDeclarations()) {
+		for (DataSourceDeclaration dataSource : this.getDataSourceDeclarations()) {
 			stream.write(Serializer.getString(dataSource).getBytes());
 			stream.write('\n');
 		}
 
-		for (Rule rule : getRules()) {
+		for (Rule rule : this.getRules()) {
 			stream.write(Serializer.getString(rule).getBytes());
 			stream.write('\n');
 		}
 
-		for (Fact fact : getFacts()) {
+		for (Fact fact : this.getFacts()) {
 			stream.write(Serializer.getFactString(fact).getBytes());
 			stream.write('\n');
 		}
@@ -652,7 +652,7 @@ public class KnowledgeBase implements Iterable<Statement> {
 	 */
 	public void writeKnowledgeBase(String filePath) throws IOException {
 		try (OutputStream stream = new FileOutputStream(filePath)) {
-			writeKnowledgeBase(stream);
+			this.writeKnowledgeBase(stream);
 		}
 	}
 

@@ -27,11 +27,11 @@ import org.semanticweb.rulewerk.core.model.implementation.Grounder;
 import org.semanticweb.rulewerk.core.reasoner.KnowledgeBase;
 import org.semanticweb.rulewerk.core.reasoner.LogLevel;
 import org.semanticweb.rulewerk.core.reasoner.Reasoner;
-import org.semanticweb.rulewerk.core.reasoner.implementation.VLogReasoner;
 import org.semanticweb.rulewerk.parser.ParsingException;
 import org.semanticweb.rulewerk.parser.RuleParser;
 import org.semanticweb.rulewerk.core.model.api.AspRule;
 import org.semanticweb.rulewerk.core.model.api.Predicate;
+import org.semanticweb.rulewerk.reasoner.vlog.VLogReasoner;
 
 /**
  * This example grounds a given asp encoding by using VLog. The grounding can be shown either in a textual format or in

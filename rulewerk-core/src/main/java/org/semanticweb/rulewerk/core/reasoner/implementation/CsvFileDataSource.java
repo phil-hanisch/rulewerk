@@ -20,7 +20,6 @@ package org.semanticweb.rulewerk.core.reasoner.implementation;
  * #L%
  */
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -78,4 +77,8 @@ public class CsvFileDataSource extends FileDataSource {
 		return Serializer.getString(this);
 	}
 
+	@Override
+	public void accept(DataSourceConfigurationVisitor visitor) throws IOException {
+		visitor.visit(this);
+	}
 }
