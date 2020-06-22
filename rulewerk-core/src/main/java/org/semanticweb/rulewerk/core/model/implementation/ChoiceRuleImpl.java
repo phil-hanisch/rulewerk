@@ -162,7 +162,7 @@ public class ChoiceRuleImpl implements ChoiceRule {
 
 		// add rule for grounding global variables
 		Conjunction<PositiveLiteral> bodyRuleHead = new ConjunctionImpl<>(Arrays.asList(bodyLiteralHeadVariables, bodyLiteralAllVariables));
-		list.add(new RuleImpl(bodyRuleHead, getBody()));
+		list.add(new RuleImpl(bodyRuleHead, getBody().getSimplifiedConjunction(approximatedPredicates, true)));
 
 		// add helper rule for grounding local variables (based on global variables)
 		int i = 0;
@@ -173,7 +173,7 @@ public class ChoiceRuleImpl implements ChoiceRule {
 			List<Literal> choiceElementRuleBodyLiterals = new ArrayList<>();
 			choiceElementRuleBodyLiterals.add(bodyLiteralHeadVariables);
 			choiceElementRuleBodyLiterals.addAll(condition.getLiterals());
-			Conjunction<Literal> choiceElementRuleBody = new ConjunctionImpl<>(choiceElementRuleBodyLiterals);
+			Conjunction<Literal> choiceElementRuleBody = new ConjunctionImpl<>(choiceElementRuleBodyLiterals).getSimplifiedConjunction(approximatedPredicates, true);
 
 			// build helper rule head, containing a literal for approximating the original literal
 			// and a literal for grounding the local variables
