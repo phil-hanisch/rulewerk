@@ -298,7 +298,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 					long lowerBoundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 1);
 
 					writer.write("1 0 1 " + lowerBoundInteger // rule statement for a disjunctive rule with a single head literal
-						+ " 1 " + rule.getLowerBound() + " " + chosenLiteralSet.size() // weighted body
+						+ " 1 " + rule.getLowerBound() + " " + chosenLiteralSet.size() + " " // weighted body
 						+ StringUtils.join(chosenLiteralSet, " 1 ") + " 1" // elements with weight 1
 					);
 					writer.newLine();
@@ -311,7 +311,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 					// introduce integer to check if too many elements has been chosen
 					long upperBoundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 2);
 					writer.write("1 0 1 " + upperBoundInteger // rule statement for a disjunctive rule with a single head literal
-						+ " 1 " + (rule.getUpperBound() + 1) + " " + chosenLiteralSet.size() // weighted body
+						+ " 1 " + (rule.getUpperBound() + 1) + " " + chosenLiteralSet.size() + " " // weighted body
 						+ StringUtils.join(chosenLiteralSet, " 1 ") + " 1" // elements with weight 1
 					);
 					writer.newLine();
