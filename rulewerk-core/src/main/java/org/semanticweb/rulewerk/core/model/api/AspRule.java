@@ -107,7 +107,7 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	 * @return a positive helper literal
 	 */
 	default PositiveLiteral getHelperLiteral() {
-		String predicateName = "rule" + this.getRuleIdx();
+		String predicateName = buildHelperLiteralName("rule", this.getRuleIdx());
 		List<Term> terms = this.getBody().getUniversalVariables().collect(Collectors.toList());
 		Predicate predicate = new PredicateImpl(predicateName, terms.size());
 		return new PositiveLiteralImpl(predicate, terms);
@@ -121,7 +121,27 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 	 * @return a positive helper literal
 	 */
 	default PositiveLiteral getHelperLiteral(List<Term> terms, int... indices) {
-		StringBuilder predicateName = new StringBuilder("rule");
+		String predicateName = buildHelperLiteralName("rule", indices);
+		Predicate predicate = new PredicateImpl(predicateName, terms.size());
+		return new PositiveLiteralImpl(predicate, terms);
+	}
+
+	/**
+	 * Construct a helper literal based on the given name, terms and indices
+	 *
+	 * @param name the name for the helper literal
+	 * @param terms the relevant variables
+	 * @param indices a list of indices
+	 * @return a positive helper literal
+	 */
+	default PositiveLiteral getHelperLiteral(String name, List<Term> terms, int... indices) {
+		String predicateName = buildHelperLiteralName(name, indices);
+		Predicate predicate = new PredicateImpl(predicateName, terms.size());
+		return new PositiveLiteralImpl(predicate, terms);
+	}
+
+	default String buildHelperLiteralName(String base, int... indices) {
+		StringBuilder predicateName = new StringBuilder(base);
 		boolean first = true;
 		for (int i : indices) {
 			if (first) {
@@ -131,7 +151,6 @@ public abstract interface AspRule extends SyntaxObject, Statement, Entity {
 			}
 			predicateName.append(i);
 		}
-		Predicate predicate = new PredicateImpl(predicateName.toString(), terms.size());
-		return new PositiveLiteralImpl(predicate, terms);
+		return predicateName.toString();
 	}
 }

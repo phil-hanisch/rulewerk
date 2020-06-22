@@ -152,24 +152,40 @@ public class ChoiceRuleImpl implements ChoiceRule {
 	public List<Rule> getApproximation(Set<Predicate> approximatedPredicates) {
 		List<Rule> list = new ArrayList<>();
 
-		// add helper rule for grounding global variables
-		PositiveLiteral literal = this.getHelperLiteral();
-		Conjunction<PositiveLiteral> head = new ConjunctionImpl<>(Collections.singletonList(literal));
-		list.add(new RuleImpl(head, this.body.getSimplifiedConjunction(approximatedPredicates, true)));
+		// add rule for grounding global variables that appear in both head and body
+		List<Term> headGlobalVariables = getRelevantGlobalVariables().collect(Collectors.toList());
+		PositiveLiteral bodyLiteralHeadVariables = getHelperLiteral("body", headGlobalVariables, getRuleIdx());
+
+		// add helper rule for grounding global variables that appear in the body
+		List<Term> globalVariables = getGlobalVariables().collect(Collectors.toList());
+		PositiveLiteral bodyLiteralAllVariables = getHelperLiteral("bodyAll", globalVariables, getRuleIdx());
+
+		// add rule for grounding global variables
+		Conjunction<PositiveLiteral> bodyRuleHead = new ConjunctionImpl<>(Arrays.asList(bodyLiteralHeadVariables, bodyLiteralAllVariables));
+		list.add(new RuleImpl(bodyRuleHead, getBody()));
 
 		// add helper rule for grounding local variables (based on global variables)
 		int i = 0;
 		for (ChoiceElement choiceElement : this.head) {
-			Conjunction<Literal> context = choiceElement.getContext();
-			List<Term> terms = Stream.concat(this.body.getUniversalVariables(), context.getUniversalVariables()).distinct().collect(Collectors.toList());
-			literal = this.getHelperLiteral(terms, this.ruleIdx, i);
-			head = new ConjunctionImpl<>(Collections.singletonList(literal));
+			Conjunction<Literal> condition = choiceElement.getContext();
 
-			List<Literal> bodyLiterals = new ArrayList<>(this.body.getLiterals());
-			bodyLiterals.addAll(context.getLiterals());
+			// build helper rule body, containing condition and literal representing original rule body
+			List<Literal> choiceElementRuleBodyLiterals = new ArrayList<>();
+			choiceElementRuleBodyLiterals.add(bodyLiteralHeadVariables);
+			choiceElementRuleBodyLiterals.addAll(condition.getLiterals());
+			Conjunction<Literal> choiceElementRuleBody = new ConjunctionImpl<>(choiceElementRuleBodyLiterals);
 
-			list.add(new RuleImpl(head, (new ConjunctionImpl<>(bodyLiterals)).getSimplifiedConjunction(approximatedPredicates, true)));
-			list.add(new RuleImpl(new ConjunctionImpl<>(Collections.singletonList(choiceElement.getLiteral())), new ConjunctionImpl<>(head.getLiterals())));
+			// build helper rule head, containing a literal for approximating the original literal
+			// and a literal for grounding the local variables
+			List<Term> choiceElementVariables = Stream.concat(
+				getRelevantGlobalVariables(),
+				condition.getUniversalVariables()
+			).distinct().collect(Collectors.toList());
+			PositiveLiteral choiceElementLiteral = this.getHelperLiteral(choiceElementVariables, this.ruleIdx, i);
+			Conjunction<PositiveLiteral> choiceElementRuleHead = new ConjunctionImpl<>(Arrays.asList(choiceElementLiteral, choiceElement.getLiteral()));
+
+			// add rule for grounding local variables and approximating head literals
+			list.add(new RuleImpl(choiceElementRuleHead, choiceElementRuleBody));
 
 			i++;
 		}

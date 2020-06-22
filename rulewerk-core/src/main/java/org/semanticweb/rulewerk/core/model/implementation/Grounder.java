@@ -22,6 +22,7 @@ package org.semanticweb.rulewerk.core.model.implementation;
 
 import karmaresearch.vlog.NotStartedException;
 import karmaresearch.vlog.Term.TermType;
+import org.apache.commons.lang3.StringUtils;
 import org.semanticweb.rulewerk.core.model.api.*;
 import org.semanticweb.rulewerk.core.reasoner.KnowledgeBase;
 import org.semanticweb.rulewerk.core.reasoner.QueryResultIterator;
@@ -234,20 +235,90 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 * @param rule the rule to ground
 	 */
 	public void groundRule(ChoiceRule rule) throws IOException {
-		PositiveLiteral literal = rule.getHelperLiteral();
-		Map<Variable, Long> answerMap = new HashMap<>();
-		List<Variable> variables = literal.getUniversalVariables().collect(Collectors.toList());
+		List<UniversalVariable> relevantGlobalVariables = rule.getRelevantGlobalVariables().collect(Collectors.toList());
+		PositiveLiteral bodyLiteral = rule.getHelperLiteral("body", new ArrayList<>(relevantGlobalVariables), rule.getRuleIdx());
 
+		Map<Variable, Long> answerMapHeadVariables = new HashMap<>();
 		int counter = 0;
-		try (final karmaresearch.vlog.QueryResultIterator answers = reasoner.answerQueryInNativeFormat(literal, true)) {
+		try (final karmaresearch.vlog.QueryResultIterator answersBody = reasoner.answerQueryInNativeFormat(bodyLiteral, true)) {
 			// each query result represents a grounding (= grounding of the global variables)
-			while (answers.hasNext()) {
+			while (answersBody.hasNext()) {
 				counter++;
-				long[] terms = answers.next();
+				long[] terms = answersBody.next();
 				for (int i = 0; i < terms.length; i++) {
-					answerMap.put(variables.get(i), terms[i]);
+					answerMapHeadVariables.put(relevantGlobalVariables.get(i), terms[i]);
 				}
 
+				// helper integer for body (get and write)
+				long[] termIds = getTermIds(bodyLiteral, answerMapHeadVariables);
+				int bodyHelpInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 4);
+				// TODO: writeBodyHelpIntegerRules(bodyHelpInteger, answerMapHeadVariables);
+
+				Map<Integer, List<Integer>> choiceSetMap = new HashMap<>();
+				int idx = 0;
+				for (ChoiceElement choiceElement : rule.getChoiceElements()) {
+					addChoiceElementAspifToMap(choiceSetMap, choiceElement, rule, answerMapHeadVariables, idx);
+					idx++;
+				}
+
+				Set<Integer> chosenLiteralSet = new HashSet<>();
+
+				// for each condition: add a choice statement
+				for (Integer conditionInteger : choiceSetMap.keySet()) {
+					List<Integer> literalIntegers = choiceSetMap.get(conditionInteger);
+
+					// { choice element integers } :- body integer, condition integer
+					writer.write("1 1 " // rule statement for a choice rule
+						+ literalIntegers.size() + " " // count of selectable literals
+						+ StringUtils.join(literalIntegers, " ") // the literals
+						+ " 0 2 " // normal body with two literals
+						+ bodyHelpInteger + " " + conditionInteger); // body and condition
+					writer.newLine();
+
+					if (rule.hasLowerBound() || rule.hasUpperBound()) {
+						for (Integer literalInteger : literalIntegers) {
+							// literal counts integer :- literal integer, condition integer
+							int countLiteralInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, new long[]{literalInteger}, 3);
+
+							writer.write("1 0 1 "  // rule statement for a disjunctive rule with a single head literal
+								+ countLiteralInteger
+								+ " 0 2 "
+								+ literalInteger + " " + conditionInteger);
+							writer.newLine();
+
+							// collect element counts integer
+							chosenLiteralSet.add(countLiteralInteger);
+						}
+					}
+				}
+
+				// if there are bounds, take care that they are satisfied
+				if (rule.hasLowerBound()) {
+					// introduce integer to check if enough elements has been chosen
+					long lowerBoundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 1);
+
+					writer.write("1 0 1 " + lowerBoundInteger // rule statement for a disjunctive rule with a single head literal
+						+ " 1 " + rule.getLowerBound() + " " + chosenLiteralSet.size() // weighted body
+						+ StringUtils.join(chosenLiteralSet, " 1 ") + " 1" // elements with weight 1
+					);
+					writer.newLine();
+
+					writer.write("1 0 0 0 2 " + bodyHelpInteger + " -" + lowerBoundInteger);
+					writer.newLine();
+				}
+
+				if (rule.hasUpperBound()) {
+					// introduce integer to check if too many elements has been chosen
+					long upperBoundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 2);
+					writer.write("1 0 1 " + upperBoundInteger // rule statement for a disjunctive rule with a single head literal
+						+ " 1 " + (rule.getUpperBound() + 1) + " " + chosenLiteralSet.size() // weighted body
+						+ StringUtils.join(chosenLiteralSet, " 1 ") + " 1" // elements with weight 1
+					);
+					writer.newLine();
+
+					writer.write("1 0 0 0 2 " + bodyHelpInteger + " " + upperBoundInteger);
+					writer.newLine();
+				}
 //				if (this.textFormat) {
 //					// ground choice with placeholder for choice elements
 //					String groundedRule = rule.ground(approximatedPredicates, answerMap);
@@ -267,47 +338,6 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 //						e.printStackTrace();
 //					}
 //				} else {
-					// helper integer for body (get and write)
-//					writer.write(rule.getSyntacticRepresentation() + "\n");
-					long[] termIds = getTermIds(literal, answerMap);
-					long bodyHelpInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds);
-					writer.write("1 0 1 " + bodyHelpInteger); // rule statement for disjunctive rule with a head literal
-					writeNormalBodyAspif(rule.getBody(), answerMap);
-
-					Set<Long> choiceElementToCountIntegers = new HashSet<>();
-					int idx = 0;
-					for (ChoiceElement choiceElement : rule.getChoiceElements()) {
-						choiceElementToCountIntegers.addAll(writeAndCollectChoiceElementAspif(choiceElement, rule, answerMap, idx, bodyHelpInteger));
-						idx++;
-					}
-
-					// if there are bounds, take care that they are satisfied
-					if (rule.hasLowerBound()) {
-						// introduce integer to check if enough elements has been chosen
-						long lowerBoundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 1);
-						writer.write("1 0 1 " + lowerBoundInteger); // rule statement for a disjunctive rule with a single head literal
-						writer.write(" 1 " + rule.getLowerBound() + " " + choiceElementToCountIntegers.size()); // weighted body
-						for (Long choiceElementToCount : choiceElementToCountIntegers) {
-							writer.write(" " + choiceElementToCount + " 1"); // element with weight 1
-						}
-						writer.write("\n");
-
-						writer.write("1 0 0 0 2 " + bodyHelpInteger + " -" + lowerBoundInteger);
-						writer.write("\n");
-					}
-					if (rule.hasUpperBound()) {
-						// introduce integer to check if too many elements has been chosen
-						long upperBoundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 2);
-						writer.write("1 0 1 " + upperBoundInteger); // rule statement for a disjunctive rule with a single head literal
-						writer.write(" 1 " + (rule.getUpperBound() + 1) + " " + choiceElementToCountIntegers.size()); // weighted body
-						for (Long choiceElementToCount : choiceElementToCountIntegers) {
-							writer.write(" " + choiceElementToCount + " 1"); // element with weight 1
-						}
-						writer.write("\n");
-
-						writer.write("1 0 0 0 2 " + bodyHelpInteger + " " + upperBoundInteger);
-						writer.write("\n");
-					}
 //				}
 			}
 		}
@@ -381,6 +411,84 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		}
 
 		writeNormalBodyAspif(rule.getBody(), answerMap);
+	}
+
+	/**
+	 * Add the integer for the literal of a choice element to the integer set (a.k.a choice set) which contains all the
+	 * integers with the same condition.
+	 *
+	 * @param choiceSetMap a map where the literal integer sets are stored corresponding to their condition
+	 * @param choiceElement the choice element to handle
+	 * @param rule the rule the choice element belongs to
+	 * @param answerMapHeadVariables the answer map for grounding the head variables
+	 * @param idx the index of the choice element
+	 */
+	private void addChoiceElementAspifToMap(Map<Integer, List<Integer>> choiceSetMap, ChoiceElement choiceElement, ChoiceRule rule, Map<Variable, Long> answerMapHeadVariables, int idx) throws IOException {
+		// Get all the variables and terms used by the body and the condition of the choice element
+		// For the variables: Replace them with the constant if they are part of the grounding of the body
+		List<Term> terms = Stream.concat(
+			rule.getBody().getUniversalVariables(),
+			choiceElement.getContext().getUniversalVariables()
+		).distinct().map(variable -> {
+			Long termId;
+			if ((termId = answerMapHeadVariables.get(variable)) != null) {
+				try {
+					karmaresearch.vlog.Term term;
+					String s = reasoner.getConstant(termId);
+					if (s == null) {
+						term = new karmaresearch.vlog.Term(TermType.BLANK, "" + (termId >> 40) + "_"
+							+ ((termId >> 32) & 0377) + "_" + (termId & 0xffffffffL));
+					} else {
+						term = new karmaresearch.vlog.Term(TermType.CONSTANT, s);
+					}
+					return reasoner.toTerm(term);
+				} catch (NotStartedException e) {
+					// Should not happen, we just did a query ...
+					return variable;
+				}
+			} else {
+				return variable;
+			}
+		}).collect(Collectors.toList());
+
+		Map<Variable, Long> answerMapChoiceElement = new HashMap<>(answerMapHeadVariables);
+		PositiveLiteral literal = rule.getHelperLiteral(terms, rule.getRuleIdx(), idx);
+		try (final karmaresearch.vlog.QueryResultIterator answers = reasoner.answerQueryInNativeFormat(literal, true)) {
+			long predicateId = getPredicateIndex(choiceElement.getLiteral().getPredicate());
+
+			while (answers.hasNext()) {
+				// build the map that represents the completely (locally and globally) ground rule
+				long[] localTerms = answers.next();
+				for (int i = 0; i < terms.size(); i++) {
+					Term term = terms.get(i);
+					if (term instanceof Variable) {
+						answerMapChoiceElement.put((Variable) term, localTerms[i]);
+					}
+				}
+
+				// get the integer for the literal of the choice element
+				long[] termIds = getTermIds(choiceElement.getLiteral(), answerMapChoiceElement);
+				int literalInteger = getAspifValue(predicateId, false, termIds);
+
+				// get the integers for the literals of the condition of the choice element
+				// ignore not approximated literals
+				List<Integer> conditionIntegerList = choiceElement.getContext().getLiterals().stream().filter(
+					literal1 -> approximatedPredicates.contains(literal1.getPredicate())
+				).map(
+					literal1 -> getAspifValue(getPredicateIndex(literal1.getPredicate()), literal1.isNegated(), getTermIds(literal1, answerMapChoiceElement))
+				).collect(Collectors.toList());
+				int conditionInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, getTermIds(conditionIntegerList), 0);
+
+				if (choiceSetMap.containsKey(conditionInteger)) {
+					choiceSetMap.get(conditionInteger).add(literalInteger);
+				} else {
+					writer.write("1 0 1 " + conditionInteger); // rule statement for a disjunctive rule with a single literal
+					writeNormalBodyAspif(choiceElement.getContext(), answerMapChoiceElement);
+					choiceSetMap.put(conditionInteger, new ArrayList<>(Collections.singletonList(literalInteger)));
+				}
+			}
+
+		}
 	}
 
 	/**
@@ -656,6 +764,14 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				}
 			}
 			idx++;
+		}
+		return termIds;
+	}
+
+	private long[] getTermIds(List<Integer> integerList) {
+		long[] termIds = new long[integerList.size()];
+		for (int i=0; i < integerList.size(); i++) {
+			termIds[i] = integerList.get(i);
 		}
 		return termIds;
 	}
