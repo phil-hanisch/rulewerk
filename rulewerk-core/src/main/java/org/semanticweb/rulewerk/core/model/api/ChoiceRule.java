@@ -3,6 +3,8 @@ package org.semanticweb.rulewerk.core.model.api;
 import org.semanticweb.rulewerk.core.model.implementation.Serializer;
 
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /*-
  * #%L
@@ -78,4 +80,36 @@ public interface ChoiceRule extends AspRule {
 	 * @return boolean
 	 */
 	Boolean hasLowerBound();
+
+	/**
+	 * Returns a stream containing all global variables that appear only in the rule body.
+	 *
+	 * @return stream of variables
+	 */
+	default Stream<UniversalVariable> getBodyOnlyGlobalVariables() {
+		List<Term> headGlobalVariables = this.getChoiceElements().stream().flatMap(SyntaxObject::getUniversalVariables).collect(Collectors.toList());
+		return getBody().getUniversalVariables().filter(var -> !headGlobalVariables.contains(var));
+	}
+
+	/**
+	 * Returns a stream containing all global variables that appear in the rule head, too.
+	 *
+	 * @return stream of variables
+	 */
+	default Stream<UniversalVariable> getRelevantGlobalVariables() {
+		List<Term> headGlobalVariables = this.getChoiceElements().stream().flatMap(SyntaxObject::getUniversalVariables).collect(Collectors.toList());
+		return getBody().getUniversalVariables().filter(headGlobalVariables::contains);
+	}
+
+	/**
+	 * Returns a stream containing all global variables, i.e. variables that occur in the rule body. The stream is
+	 * constructed in such a way that the variables that appear also in the rule head are first.
+	 *
+	 * @return stream of variables
+	 */
+	default Stream<UniversalVariable> getGlobalVariables() {
+		return Stream.concat(getRelevantGlobalVariables(), getBodyOnlyGlobalVariables());
+	}
+
+
 }
