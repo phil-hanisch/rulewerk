@@ -36,9 +36,48 @@ for c in results.keys():
         
 # show results
 fig, ax = plt.subplots()  # Create a figure containing a single axes.
-components = ['Gringo', 'VLog', 'rulewerk', 'rulewerkOverall', 'Clingo', 'GoFastOverall']
-colors = {'Gringo': 'k', 'VLog': 'r', 'rulewerk': 'green', 'rulewerkOverall': 'blue', 'Clingo': 'skyblue', 'GoFastOverall': 'c'}
-markers = {'Gringo': 'o', 'FastUtilOverall': 'o'}
+components = [
+    'Gringo',
+    'VLog',
+    'rulewerk',
+    'rulewerkOverall',
+    'Clingo',
+    #'GoFastOverall',
+    #'improvedChoice',
+    #'improvedChoiceOverall',
+    #'improvedChoice2',
+    #'improvedChoice2Overall',
+    'improvedChoice3',
+    'improvedChoice3Overall',
+    'improvedChoice4',
+    'improvedChoice4Overall'
+]
+colors = {
+    'Gringo': 'k',
+    'VLog': 'r',
+    'rulewerk': 'green',
+    'rulewerkOverall': 'blue',
+    'Clingo': 'skyblue',
+    'GoFastOverall': 'c',
+    'improvedChoice': 'seagreen',
+    'improvedChoiceOverall': 'sienna',
+    'improvedChoice2': 'seagreen',
+    'improvedChoice2Overall': 'sienna',
+    'improvedChoice3': 'salmon',
+    'improvedChoice3Overall': 'tomato'
+}
+markers = {
+    'Gringo': 'o',
+    'FastUtilOverall': 'o',
+    'improvedChoice2': '+',
+    'improvedChoice2Overall': '+',
+    'improvedChoice': '1',
+    'improvedChoiceOverall': '1',
+    'improvedChoice3': '2',
+    'improvedChoice3Overall': '2',
+    'improvedChoice4': '+',
+    'improvedChoice4Overall': '+'
+}
 labels = {}
 for component in components:
     x = []
