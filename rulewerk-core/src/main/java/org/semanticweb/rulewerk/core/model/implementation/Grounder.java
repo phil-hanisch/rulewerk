@@ -267,28 +267,40 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				// for each condition: add a choice statement
 				for (Integer conditionInteger : choiceSetMap.keySet()) {
 					List<Integer> literalIntegers = choiceSetMap.get(conditionInteger);
+					List<Integer> choiceSetBodyIntegers = new ArrayList<>();
+
+					if (bodyHelpInteger > 0) {
+						choiceSetBodyIntegers.add(bodyHelpInteger);
+					}
+					if (conditionInteger > 0) {
+						choiceSetBodyIntegers.add(conditionInteger);
+					}
 
 					// { choice element integers } :- body integer, condition integer
 					writer.write("1 1 " // rule statement for a choice rule
 						+ literalIntegers.size() + " " // count of selectable literals
 						+ StringUtils.join(literalIntegers, " ") // the literals
-						+ " 0 2 " // normal body with two literals
-						+ bodyHelpInteger + " " + conditionInteger); // body and condition
+						+ " 0 " + choiceSetBodyIntegers.size() + " " // normal body
+						+ StringUtils.join(choiceSetBodyIntegers, " ")); // body and condition
 					writer.newLine();
 
 					if (rule.hasLowerBound() || rule.hasUpperBound()) {
 						for (Integer literalInteger : literalIntegers) {
-							// literal counts integer :- literal integer, condition integer
-							int countLiteralInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, new long[]{literalInteger}, 3);
+							if (conditionInteger > 0) {
+								// literal counts integer :- literal integer, condition integer
+								int countLiteralInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, new long[]{literalInteger}, 3);
 
-							writer.write("1 0 1 "  // rule statement for a disjunctive rule with a single head literal
-								+ countLiteralInteger
-								+ " 0 2 "
-								+ literalInteger + " " + conditionInteger);
-							writer.newLine();
+								writer.write("1 0 1 "  // rule statement for a disjunctive rule with a single head literal
+									+ countLiteralInteger
+									+ " 0 2 "
+									+ literalInteger + " " + conditionInteger);
+								writer.newLine();
 
-							// collect element counts integer
-							chosenLiteralSet.add(countLiteralInteger);
+								// collect element counts integer
+								chosenLiteralSet.add(countLiteralInteger);
+							} else {
+								chosenLiteralSet.add(literalInteger);
+							}
 						}
 					}
 				}
@@ -304,7 +316,11 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 					);
 					writer.newLine();
 
-					writer.write("1 0 0 0 2 " + bodyHelpInteger + " -" + lowerBoundInteger);
+					if (bodyHelpInteger > 0) {
+						writer.write("1 0 0 0 2 " + bodyHelpInteger + " -" + lowerBoundInteger);
+					} else {
+						writer.write("1 0 0 0 1 -" + lowerBoundInteger);
+					}
 					writer.newLine();
 				}
 
@@ -317,7 +333,11 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 					);
 					writer.newLine();
 
-					writer.write("1 0 0 0 2 " + bodyHelpInteger + " " + upperBoundInteger);
+					if (bodyHelpInteger > 0) {
+						writer.write("1 0 0 0 2 " + bodyHelpInteger + " " + upperBoundInteger);
+					} else {
+						writer.write("1 0 0 0 1 " + upperBoundInteger);
+					}
 					writer.newLine();
 				}
 //				if (this.textFormat) {
@@ -522,13 +542,18 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				).map(
 					literal1 -> getAspifValue(getPredicateIndex(literal1.getPredicate()), literal1.isNegated(), getTermIds(literal1, answerMapChoiceElement))
 				).collect(Collectors.toList());
-				int conditionInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, getTermIds(conditionIntegerList), 0);
+				// an empty list has to be handled differently
+				int conditionInteger = conditionIntegerList.isEmpty()
+					? 0
+					: getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, getTermIds(conditionIntegerList), 0);
 
 				if (choiceSetMap.containsKey(conditionInteger)) {
 					choiceSetMap.get(conditionInteger).add(literalInteger);
 				} else {
-					writer.write("1 0 1 " + conditionInteger); // rule statement for a disjunctive rule with a single literal
-					writeNormalBodyAspif(choiceElement.getContext(), answerMapChoiceElement);
+					if (conditionInteger != 0) {
+						writer.write("1 0 1 " + conditionInteger); // rule statement for a disjunctive rule with a single literal
+						writeNormalBodyAspif(choiceElement.getContext(), answerMapChoiceElement);
+					}
 					choiceSetMap.put(conditionInteger, new ArrayList<>(Collections.singletonList(literalInteger)));
 				}
 			}
