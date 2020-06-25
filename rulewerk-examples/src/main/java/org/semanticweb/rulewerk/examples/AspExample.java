@@ -21,6 +21,7 @@ package org.semanticweb.rulewerk.examples;
  */
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -77,7 +78,9 @@ public class AspExample {
 			textFormat = line.hasOption("t");
 			inputPath = line.getOptionValue("P", line.hasOption("p") ? ExamplesUtils.INPUT_FOLDER : "") + "/";
 			outputPath = line.getOptionValue("P", line.hasOption("p") ? ExamplesUtils.OUTPUT_FOLDER : "") + "/";
-			outputWriter = new BufferedWriter(new FileWriter(outputPath + line.getOptionValue("o")));
+			String fileName = outputPath + line.getOptionValue("o");
+			outputWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName), StandardCharsets.US_ASCII));
+			//outputWriter = new BufferedWriter(new FileWriter(outputPath + line.getOptionValue("o")));
 			instance = line.getOptionValue("i", "unnamed_instance");
 			system = line.getOptionValue("s", "Grounding");
 		} catch (ParseException exp) {
@@ -141,7 +144,7 @@ public class AspExample {
 			} else {
 				// Compute the answer sets
 				Process clasp = Runtime.getRuntime().exec("clasp");
-				BufferedWriter writerToClasp = new BufferedWriter(new OutputStreamWriter(clasp.getOutputStream()));
+				BufferedWriter writerToClasp = new BufferedWriter(new OutputStreamWriter(clasp.getOutputStream(), StandardCharsets.US_ASCII));
 				Grounder grounder = new Grounder(reasoner, kb, writerToClasp, approximatedPredicates, false);
 				grounder.groundKnowledgeBase();
 				writerToClasp.close();
