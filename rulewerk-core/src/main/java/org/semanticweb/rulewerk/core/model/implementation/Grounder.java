@@ -253,8 +253,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 
 				// helper integer for body (get and write)
 				long[] termIds = getTermIds(bodyLiteral, answerMapHeadVariables);
-				int bodyHelpInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 4);
-				// TODO: writeBodyHelpIntegerRules(bodyHelpInteger, answerMapHeadVariables);
+				int bodyHelpInteger = getAndWriteBodyHelpInteger(rule, bodyLiteral, answerMapHeadVariables);
 
 				Map<Integer, List<Integer>> choiceSetMap = new HashMap<>();
 				int idx = 0;
@@ -352,6 +351,59 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 			System.out.println("Duration per instance: " + ((endTime - startTime) / counter ) + " ns");
 		}
 		System.out.println();
+	}
+
+	/**
+	 * Returns the integer for the body integer. If there are several possibles ways to infer a grounded body instance,
+	 * a help integers is introduced (and returned) and the corresponding rules to get the body help integer are written.
+	 * It might be possible to get the body integer in several ways if the body contains variables that do not occur in
+	 * the rule head.
+	 *
+	 * @param rule the rule for which the body is considered
+	 * @param bodyLiteral the literal containing all variables that occur in both the rule body and head
+	 * @param answerMapHeadVariables grounding for those variables
+	 * @return an integer representing the rule body
+	 * @throws IOException due to writing to file
+	 */
+	private int getAndWriteBodyHelpInteger(ChoiceRule rule, PositiveLiteral bodyLiteral, Map<Variable, Long> answerMapHeadVariables) throws IOException {
+		int approximatedLiteralCount = rule.getBody().getRelevantLiteralCount(approximatedPredicates);
+		if (approximatedLiteralCount == 0) {
+			return 0;
+		} else if (approximatedLiteralCount == 1 && rule.getBodyOnlyGlobalVariables().count() == 0) {
+			Literal literal = rule.getBody().getLiterals().stream().filter(literal1 -> approximatedPredicates.contains(literal1.getPredicate())).findFirst().orElse(bodyLiteral);
+			long[] termIds = getTermIds(literal, answerMapHeadVariables);
+			return getAspifValue(getPredicateIndex(literal.getPredicate()), literal.isNegated(), termIds);
+		} else {
+			long[] termIds = getTermIds(bodyLiteral, answerMapHeadVariables);
+			int bodyHelpInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 4);
+
+			List<Term> partiallyGroundedVariables = rule.getGlobalVariables()
+				.map(variable -> getTermFromPartialAnswer(variable, answerMapHeadVariables))
+				.collect(Collectors.toList());
+			Map<Variable, Long> answerMapBodyVariables = new HashMap<>(answerMapHeadVariables);
+			PositiveLiteral bodyAllLiteral = rule.getHelperLiteral("bodyAll", partiallyGroundedVariables, rule.getRuleIdx());
+
+			try (final karmaresearch.vlog.QueryResultIterator answersBodyAll = reasoner.answerQueryInNativeFormat(bodyAllLiteral, true)) {
+
+				while (answersBodyAll.hasNext()) {
+					// build the map that represents the completely (locally and globally) ground rule
+					long[] allTermsId = answersBodyAll.next();
+					for (int i = 0; i < partiallyGroundedVariables.size(); i++) {
+						Term globalTerm = partiallyGroundedVariables.get(i);
+						if (globalTerm.isVariable()) {
+							answerMapBodyVariables.put((Variable) globalTerm, allTermsId[i]);
+						}
+					}
+
+					writer.write("1 0 1 " + // rule statement for disjunctive rule with single head literal
+						bodyHelpInteger // for the body help integer
+					);
+					writeNormalBodyAspif(rule.getBody(), answerMapBodyVariables);
+				}
+			}
+
+			return bodyHelpInteger;
+		}
 	}
 
 	// ========== Text-based grounding part ==========
