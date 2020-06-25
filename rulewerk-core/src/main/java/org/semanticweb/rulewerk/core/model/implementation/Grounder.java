@@ -426,30 +426,13 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	private void addChoiceElementAspifToMap(Map<Integer, List<Integer>> choiceSetMap, ChoiceElement choiceElement, ChoiceRule rule, Map<Variable, Long> answerMapHeadVariables, int idx) throws IOException {
 		// Get all the variables and terms used by the body and the condition of the choice element
 		// For the variables: Replace them with the constant if they are part of the grounding of the body
+
 		List<Term> terms = Stream.concat(
 			rule.getBody().getUniversalVariables(),
 			choiceElement.getContext().getUniversalVariables()
-		).distinct().map(variable -> {
-			Long termId;
-			if ((termId = answerMapHeadVariables.get(variable)) != null) {
-				try {
-					karmaresearch.vlog.Term term;
-					String s = reasoner.getConstant(termId);
-					if (s == null) {
-						term = new karmaresearch.vlog.Term(TermType.BLANK, "" + (termId >> 40) + "_"
-							+ ((termId >> 32) & 0377) + "_" + (termId & 0xffffffffL));
-					} else {
-						term = new karmaresearch.vlog.Term(TermType.CONSTANT, s);
-					}
-					return reasoner.toTerm(term);
-				} catch (NotStartedException e) {
-					// Should not happen, we just did a query ...
-					return variable;
-				}
-			} else {
-				return variable;
-			}
-		}).collect(Collectors.toList());
+		).distinct().map(
+			variable -> getTermFromPartialAnswer(variable, answerMapHeadVariables)
+		).collect(Collectors.toList());
 
 		Map<Variable, Long> answerMapChoiceElement = new HashMap<>(answerMapHeadVariables);
 		PositiveLiteral literal = rule.getHelperLiteral(terms, rule.getRuleIdx(), idx);
@@ -510,27 +493,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		// For the variables: Replace them with the constant if they are part of the grounding of the body
 		List<Term> terms = Stream.concat(rule.getBody().getUniversalVariables(), choiceElement.getContext().getUniversalVariables())
 			.distinct()
-			.map(variable -> {
-				Long termId;
-				if ((termId = globalMap.get(variable)) != null) {
-					try {
-						karmaresearch.vlog.Term term;
-						String s = reasoner.getConstant(termId);
-						if (s == null) {
-							term = new karmaresearch.vlog.Term(TermType.BLANK, "" + (termId >> 40) + "_"
-								+ ((termId >> 32) & 0377) + "_" + (termId & 0xffffffffL));
-						} else {
-							term = new karmaresearch.vlog.Term(TermType.CONSTANT, s);
-						}
-						return reasoner.toTerm(term);
-					} catch (NotStartedException e) {
-						// Should not happen, we just did a query ...
-						return variable;
-					}
-				} else {
-					return variable;
-				}
-			})
+			.map(variable -> getTermFromPartialAnswer(variable, globalMap))
 			.collect(Collectors.toList());
 
 		Map<Variable, Long> map = new HashMap<>(globalMap);
@@ -658,7 +621,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 
 			symbolicRepresentation.append(reasoner.getConstant(termId));
 		}
-		symbolicRepresentation.append(") ");
+		symbolicRepresentation.append(")");
 
 		writer.write(symbolicRepresentation.length() + " ");
 		writer.write(symbolicRepresentation.toString());
@@ -774,5 +737,35 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 			termIds[i] = integerList.get(i);
 		}
 		return termIds;
+	}
+
+	/**
+	 * Returns for a variable the corresponding term with respect to a partial answer. If no term is found, the
+	 * variable is kept.
+	 *
+	 * @param variable the variable
+	 * @param answerMap the partial answer
+	 * @return the variable or the term to which the variable is mapped
+	 */
+	private Term getTermFromPartialAnswer(Variable variable, Map<Variable, Long> answerMap) {
+		Long termId;
+		if ((termId = answerMap.get(variable)) != null) {
+			try {
+				karmaresearch.vlog.Term term;
+				String s = reasoner.getConstant(termId);
+				if (s == null) {
+					term = new karmaresearch.vlog.Term(TermType.BLANK, "" + (termId >> 40) + "_"
+						+ ((termId >> 32) & 0377) + "_" + (termId & 0xffffffffL));
+				} else {
+					term = new karmaresearch.vlog.Term(TermType.CONSTANT, s);
+				}
+				return reasoner.toTerm(term);
+			} catch (NotStartedException e) {
+				// Should not happen, we just did a query ...
+				return variable;
+			}
+		} else {
+			return variable;
+		}
 	}
 }
