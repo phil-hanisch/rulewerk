@@ -75,8 +75,8 @@ public class AspExample {
 			line = parser.parse(options, args);
 			programs = line.getArgs();
 			textFormat = line.hasOption("t");
-			inputPath = line.getOptionValue("P", line.hasOption("p") ? ExamplesUtils.INPUT_FOLDER : "");
-			outputPath = line.getOptionValue("P", line.hasOption("p") ? ExamplesUtils.OUTPUT_FOLDER : "");
+			inputPath = line.getOptionValue("P", line.hasOption("p") ? ExamplesUtils.INPUT_FOLDER : "") + "/";
+			outputPath = line.getOptionValue("P", line.hasOption("p") ? ExamplesUtils.OUTPUT_FOLDER : "") + "/";
 			outputWriter = new BufferedWriter(new FileWriter(outputPath + line.getOptionValue("o")));
 			instance = line.getOptionValue("i", "unnamed_instance");
 			system = line.getOptionValue("s", "Grounding");
@@ -112,6 +112,8 @@ public class AspExample {
 
 		// Analyse knowledge base
 		Set<Predicate> approximatedPredicates = kb.analyseAspRulesForApproximatedPredicates();
+		System.out.println("Approximated predicates:");
+		approximatedPredicates.forEach(System.out::println);
 
 		// Transform asp rules into standard rules
 		for (AspRule rule : kb.getAspRules()) {
@@ -170,6 +172,7 @@ public class AspExample {
 		System.out.println("TIMING [s] # " + instance + " # Parsing # " + ((float) (endTimeParsing - startTimeParsing) / 1000000000));
 		System.out.println("TIMING [s] # " + instance + " # VLog # " + ((float) (endTimeVLog - startTimeVLog) / 1000000000));
 		System.out.println("TIMING [s] # " + instance + " # " + system + " # " + ((float) (endTimeOutput - startTimeOutput) / 1000000000));
+		System.out.println("TIMING [s] # " + instance + " # " + system + "Grounding # " + ((float) (endTimeOutput - startTimeOverall) / 1000000000));
 		System.out.println("TIMING [s] # " + instance + " # " + system + "Overall # " + ((float) (endTimeOverall - startTimeOverall) / 1000000000));
 	}
 }
