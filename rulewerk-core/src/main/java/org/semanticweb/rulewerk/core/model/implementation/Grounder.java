@@ -288,7 +288,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 						for (Integer literalInteger : literalIntegers) {
 							if (conditionInteger > 0) {
 								// literal counts integer :- literal integer, condition integer
-								int countLiteralInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, new long[]{literalInteger}, 3);
+								int countLiteralInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, new long[]{literalInteger}, 5);
 
 								writer.write("1 0 1 "  // rule statement for a disjunctive rule with a single head literal
 									+ countLiteralInteger
@@ -306,40 +306,54 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				}
 
 				// if there are bounds, take care that they are satisfied
-				if (rule.hasLowerBound()) {
-					// introduce integer to check if enough elements has been chosen
-					long lowerBoundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 1);
+				if (rule.hasLowerBound() || rule.hasUpperBound()) {
+					long lowerBoundInteger = 0;
+					long upperBoundInteger = 0;
+					long boundInteger = 0;
 
-					writer.write("1 0 1 " + lowerBoundInteger // rule statement for a disjunctive rule with a single head literal
-						+ " 1 " + rule.getLowerBound() + " " + chosenLiteralSet.size() + " " // weighted body
-						+ StringUtils.join(chosenLiteralSet, " 1 ") + " 1" // elements with weight 1
-					);
-					writer.newLine();
 
-					if (bodyHelpInteger > 0) {
-						writer.write("1 0 0 0 2 " + bodyHelpInteger + " -" + lowerBoundInteger);
+					// get integer to check if enough elements has been chosen, if there is a lower bound
+					if (rule.hasLowerBound()) {
+						lowerBoundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 1);
+						writer.write("1 0 1 " + lowerBoundInteger // rule statement for a disjunctive rule with a single head literal
+							+ " 1 " + rule.getLowerBound() + " " + chosenLiteralSet.size() + " " // weighted body
+							+ StringUtils.join(chosenLiteralSet, " 1 ") + " 1" // elements with weight 1
+						);
+						writer.newLine();
+					}
+
+					// get integer to check if too many elements has been chosen, if there is an upper bound
+					if (rule.hasUpperBound()) {
+						upperBoundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 2);
+						writer.write("1 0 1 " + upperBoundInteger // rule statement for a disjunctive rule with a single head literal
+							+ " 1 " + (rule.getUpperBound() + 1) + " " + chosenLiteralSet.size() + " " // weighted body
+							+ StringUtils.join(chosenLiteralSet, " 1 ") + " 1" // elements with weight 1
+						);
+						writer.newLine();
+					}
+
+					// get the right integer corresponding if the bounds are satisfied
+					if (rule.hasLowerBound() && rule.hasUpperBound()) {
+						boundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 3);
+						writer.write("1 0 1 " + boundInteger // rule statement for a disjunctive rule with a single head literal
+							+ " 0 2 " + lowerBoundInteger + " -" + upperBoundInteger // normal body with the two bounds
+						);
+						writer.newLine();
+					} else if (rule.hasLowerBound()) {
+						boundInteger = -lowerBoundInteger;
 					} else {
-						writer.write("1 0 0 0 1 -" + lowerBoundInteger);
+						boundInteger = upperBoundInteger;
+					}
+
+					// ensure that the bounds are satisfied if the body is satisfied
+					if (bodyHelpInteger > 0) {
+						writer.write("1 0 0 0 2 " + bodyHelpInteger + " -" + boundInteger);
+					} else {
+						writer.write("1 0 0 0 1 -" + boundInteger);
 					}
 					writer.newLine();
 				}
 
-				if (rule.hasUpperBound()) {
-					// introduce integer to check if too many elements has been chosen
-					long upperBoundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 2);
-					writer.write("1 0 1 " + upperBoundInteger // rule statement for a disjunctive rule with a single head literal
-						+ " 1 " + (rule.getUpperBound() + 1) + " " + chosenLiteralSet.size() + " " // weighted body
-						+ StringUtils.join(chosenLiteralSet, " 1 ") + " 1" // elements with weight 1
-					);
-					writer.newLine();
-
-					if (bodyHelpInteger > 0) {
-						writer.write("1 0 0 0 2 " + bodyHelpInteger + " " + upperBoundInteger);
-					} else {
-						writer.write("1 0 0 0 1 " + upperBoundInteger);
-					}
-					writer.newLine();
-				}
 //				if (this.textFormat) {
 //					// ground choice with placeholder for choice elements
 //					String groundedRule = rule.ground(approximatedPredicates, answerMap);
