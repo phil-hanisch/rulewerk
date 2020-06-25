@@ -235,6 +235,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 * @param rule the rule to ground
 	 */
 	public void groundRule(ChoiceRule rule) throws IOException {
+		long startTime = System.nanoTime();
 		List<UniversalVariable> relevantGlobalVariables = rule.getRelevantGlobalVariables().collect(Collectors.toList());
 		PositiveLiteral bodyLiteral = rule.getHelperLiteral("body", new ArrayList<>(relevantGlobalVariables), rule.getRuleIdx());
 
@@ -242,6 +243,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		int counter = 0;
 		try (final karmaresearch.vlog.QueryResultIterator answersBody = reasoner.answerQueryInNativeFormat(bodyLiteral, true)) {
 			// each query result represents a grounding (= grounding of the global variables)
+
 			while (answersBody.hasNext()) {
 				counter++;
 				long[] terms = answersBody.next();
@@ -341,7 +343,15 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 //				}
 			}
 		}
-		System.out.println(counter);
+
+		long endTime = System.nanoTime();
+		System.out.println(rule.getSyntacticRepresentation());
+		System.out.println("Duration: " + ((endTime - startTime) / 1000000) + " ms");
+		System.out.println("Instances: " + counter);
+		if (counter > 0) {
+			System.out.println("Duration per instance: " + ((endTime - startTime) / counter ) + " ns");
+		}
+		System.out.println();
 	}
 
 	// ========== Text-based grounding part ==========
