@@ -12,7 +12,7 @@ with open('june_results') as f:
             mins, secs = duration.split(":")
             duration = 60 * float(mins) + float(secs)
         else:
-            duration = float(duration)
+            duration = float(duration.strip('s'))
         size = int(size.lstrip("size"))
 
         results_for_component = results.get(component, {})
@@ -36,35 +36,39 @@ for c in results.keys():
         
 # show results
 fig, ax = plt.subplots()  # Create a figure containing a single axes.
-components = [
-    'rulewerk',
-    'rulewerkSolving',
-    'clasp@rulewerk',
-    'Gringo',
-    'clasp@gringo',
-    'Gringo+Clasp',
-    'Clingo'
+
+# lists of components that might be shown
+comp_all = [
+    'all:rulewerk',
+    'all:gringo+clasp',
+    'all:clingo'
 ]
-colors = {
-    'rulewerk',
-    'rulewerkSolving',
-    'clasp@rulewerk',
-    'Gringo',
-    'clasp@gringo',
-    'Gringo+Clasp',
-    'Clingo'
-}
-colors = {}
-markers = {
-    'rulewerk': '.',
-    'rulewerkSolving': 'x',
-    'clasp@rulewerk': '1',
-    'Gringo': '.',
-    'clasp@gringo': '1',
-    'Gringo+Clasp': 'x',
-    'Clingo': 'x'
-}
+comp_ground = [
+    'ground:rulewerk',
+    'ground:gringo'
+]
+comp_solve = [
+    'solve:clingo',
+    'solve:clasp@rulewerk',
+    'solve:clasp@gringo'
+]
+
+# set markers
+markers = {}
+for comp in comp_all:
+    markers[comp] = 'x'
+for comp in comp_ground:
+    markers[comp] = '.'
+for comp in comp_solve:
+    markers[comp] = '1'
+
 labels = {}
+
+components = []
+components = components + comp_all
+components = components + comp_ground
+components = components + comp_solve
+
 for component in components:
     x = []
     y = []
@@ -73,7 +77,7 @@ for component in components:
         x.append(size)
         y.append(averages_by_component.get(size))
     # ax.scatter(x, y, label=labels.get(component, component))
-    print(x, y, component)
+    # print(x, y, component)
     ax.scatter(x, y,
         label=labels.get(component, component),
         # color=colors.get(component, 'k'),
