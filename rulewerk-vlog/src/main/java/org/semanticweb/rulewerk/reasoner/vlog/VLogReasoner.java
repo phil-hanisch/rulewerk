@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.Validate;
-import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.semanticweb.rulewerk.core.exceptions.IncompatiblePredicateArityException;
 import org.semanticweb.rulewerk.core.exceptions.ReasonerStateException;
 import org.semanticweb.rulewerk.core.exceptions.RulewerkRuntimeException;
