@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 results = {}
 
 # get all results
-with open('results_with_duplicates') as f:
+with open('june_results') as f:
     for line in f:
         size, component, duration = [elem.strip() for elem in line.split('#')[1:]]
         if ":" in duration:
@@ -37,46 +37,32 @@ for c in results.keys():
 # show results
 fig, ax = plt.subplots()  # Create a figure containing a single axes.
 components = [
-    'Gringo',
-    'VLog',
     'rulewerk',
-    'rulewerkOverall',
-    'Clingo',
-    #'GoFastOverall',
-    #'improvedChoice',
-    #'improvedChoiceOverall',
-    #'improvedChoice2',
-    #'improvedChoice2Overall',
-    'improvedChoice3',
-    'improvedChoice3Overall',
-    'improvedChoice4',
-    'improvedChoice4Overall'
+    'rulewerkSolving',
+    'clasp@rulewerk',
+    'Gringo',
+    'clasp@gringo',
+    'Gringo+Clasp',
+    'Clingo'
 ]
 colors = {
-    'Gringo': 'k',
-    'VLog': 'r',
-    'rulewerk': 'green',
-    'rulewerkOverall': 'blue',
-    'Clingo': 'skyblue',
-    'GoFastOverall': 'c',
-    'improvedChoice': 'seagreen',
-    'improvedChoiceOverall': 'sienna',
-    'improvedChoice2': 'seagreen',
-    'improvedChoice2Overall': 'sienna',
-    'improvedChoice3': 'salmon',
-    'improvedChoice3Overall': 'tomato'
+    'rulewerk',
+    'rulewerkSolving',
+    'clasp@rulewerk',
+    'Gringo',
+    'clasp@gringo',
+    'Gringo+Clasp',
+    'Clingo'
 }
+colors = {}
 markers = {
-    'Gringo': 'o',
-    'FastUtilOverall': 'o',
-    'improvedChoice2': '+',
-    'improvedChoice2Overall': '+',
-    'improvedChoice': '1',
-    'improvedChoiceOverall': '1',
-    'improvedChoice3': '2',
-    'improvedChoice3Overall': '2',
-    'improvedChoice4': '+',
-    'improvedChoice4Overall': '+'
+    'rulewerk': '.',
+    'rulewerkSolving': 'x',
+    'clasp@rulewerk': '1',
+    'Gringo': '.',
+    'clasp@gringo': '1',
+    'Gringo+Clasp': 'x',
+    'Clingo': 'x'
 }
 labels = {}
 for component in components:
@@ -88,7 +74,11 @@ for component in components:
         y.append(averages_by_component.get(size))
     # ax.scatter(x, y, label=labels.get(component, component))
     print(x, y, component)
-    ax.scatter(x, y, label=labels.get(component, component), color=colors.get(component, 'k'), marker=markers.get(component, 'o'))
+    ax.scatter(x, y,
+        label=labels.get(component, component),
+        # color=colors.get(component, 'k'),
+        marker=markers.get(component, 'o')
+    )
 
 ax.set_ylim(bottom=0)
 ax.set_xlim(left=0)
