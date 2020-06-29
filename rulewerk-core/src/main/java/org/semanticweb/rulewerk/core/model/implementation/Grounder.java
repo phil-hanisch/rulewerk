@@ -20,8 +20,9 @@ package org.semanticweb.rulewerk.core.model.implementation;
  * #L%
  */
 
-import karmaresearch.vlog.NotStartedException;
-import karmaresearch.vlog.Term.TermType;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+
 import org.apache.commons.lang3.StringUtils;
 import org.semanticweb.rulewerk.core.model.api.*;
 import org.semanticweb.rulewerk.core.reasoner.KnowledgeBase;
@@ -34,9 +35,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import it.unimi.dsi.fastutil.longs.AbstractLong2IntMap;
-import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
-
 /**
  * Class for grounding asp rules and facts. The grounder uses a file writer and a reasoner that has the (asp) facts
  * materialized. Moreover, the grounder utilizes the knowledge about approximated predicates to omit facts that are
@@ -44,16 +42,14 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
  */
 public class Grounder implements AspRuleVisitor<Boolean> {
 
+	final static int TOP_CONSTANT = 0;
+
 	final private KnowledgeBase knowledgeBase;
 	final private Set<Predicate> approximatedPredicates;
-	final private List<Predicate> approximatedPredicatesList;
 	final private Reasoner reasoner;
 	final private BufferedWriter writer;
 	final private boolean textFormat;
-	final private int numberOfConstants;
-	final private int numberOfRules;
-	final private int numberOfPredicates;
-	final private AbstractLong2IntMap aspifMap;
+	final private Object2IntMap<String> aspifMap;
 	private int aspifCounter;
 
 	/**
@@ -70,12 +66,8 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		this.reasoner = reasoner;
 		this.writer = writer;
 		this.approximatedPredicates = approximatedPredicates;
-		this.approximatedPredicatesList = new LinkedList<>(approximatedPredicates);
 		this.textFormat = textFormat;
-		this.numberOfConstants = knowledgeBase.getConstants().size();
-		this.numberOfRules = knowledgeBase.getAspRules().size();
-		this.numberOfPredicates = approximatedPredicates.size();
-		this.aspifMap = new Long2IntOpenHashMap();
+		this.aspifMap = new Object2IntOpenHashMap<>();
 		this.aspifCounter = 1;
 	}
 
@@ -92,9 +84,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				}
 			});
 
-			this.knowledgeBase.getAspRules().forEach(rule -> {
-				rule.accept(this);
-			});
+			this.knowledgeBase.getAspRules().forEach(rule -> rule.accept(this));
 
 			// TODO: Ground show statements
 		} else {
@@ -103,9 +93,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				this.writer.newLine();
 
 				this.knowledgeBase.getFacts().forEach(this::writeFactAspif);
-				this.knowledgeBase.getAspRules().forEach(rule -> {
-					rule.accept(this);
-				});
+				this.knowledgeBase.getAspRules().forEach(rule -> rule.accept(this));
 				this.knowledgeBase.getShowStatements().forEach(this::groundShowStatement);
 
 				this.writer.write("0");
@@ -159,19 +147,15 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 */
 	public void groundShowStatement(ShowStatement statement) {
 		PositiveLiteral literal = statement.getQueryLiteral();
-		Predicate predicate = literal.getPredicate();
-		long predicateId = getPredicateIndex(literal.getPredicate());
 
-		try (final karmaresearch.vlog.QueryResultIterator answers = reasoner.answerQueryInNativeFormat(literal, true)) {
+		try (final QueryResultIterator answers = reasoner.answerQuery(literal, true)) {
 			// each query result represents a grounding
 			while(answers.hasNext()) {
-				long[] termIds = answers.next();
+				List<Term> terms = answers.next().getTerms();
 				try {
-					writeShowStatementAspif(predicate, predicateId, termIds);
+					writeShowStatementAspif(literal, terms);
 				} catch (IOException e) {
 					e.printStackTrace();
-				} catch (NotStartedException e) {
-					// Should not happen, we just did a query ...
 				}
 			}
 		}
@@ -189,19 +173,19 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		List<PositiveLiteral> headLiterals = rule.getHeadLiterals().getLiterals();
 		if (!(headLiterals.size() == 1 && !approximatedPredicates.contains(headLiterals.get(0).getPredicate()))) {
 			PositiveLiteral literal = rule.getHelperLiteral();
-			Map<Variable, Long> answerMap = new HashMap<>();
-			List<Variable> variables = literal.getUniversalVariables().collect(Collectors.toList());
+			Map<Variable, Term> answerMap = new HashMap<>();
+			final List<Variable> variables = literal.getUniversalVariables().collect(Collectors.toList());
 
 			long startTime = System.nanoTime();
 			int counter = 0;
 
-			try (final karmaresearch.vlog.QueryResultIterator answers = reasoner.answerQueryInNativeFormat(literal, true)) {
+			try (final QueryResultIterator answers = reasoner.answerQuery(literal, true)) {
 				// each query result represents a grounding
 				while(answers.hasNext()) {
 					counter++;
-					long[] terms = answers.next();
-					for (int i = 0; i < terms.length; i++) {
-						answerMap.put(variables.get(i), terms[i]);
+					final List<Term> terms = answers.next().getTerms();
+					for (int i = 0; i < terms.size(); i++) {
+						answerMap.put(variables.get(i), terms.get(i));
 					}
 
 	//				if (this.textFormat) {
@@ -239,20 +223,19 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		List<UniversalVariable> relevantGlobalVariables = rule.getRelevantGlobalVariables().collect(Collectors.toList());
 		PositiveLiteral bodyLiteral = rule.getHelperLiteral("body", new ArrayList<>(relevantGlobalVariables), rule.getRuleIdx());
 
-		Map<Variable, Long> answerMapHeadVariables = new HashMap<>();
+		Map<Variable, Term> answerMapHeadVariables = new HashMap<>();
 		int counter = 0;
-		try (final karmaresearch.vlog.QueryResultIterator answersBody = reasoner.answerQueryInNativeFormat(bodyLiteral, true)) {
+		try (final QueryResultIterator answersBody = reasoner.answerQuery(bodyLiteral, true)) {
 			// each query result represents a grounding (= grounding of the global variables)
 
 			while (answersBody.hasNext()) {
 				counter++;
-				long[] terms = answersBody.next();
-				for (int i = 0; i < terms.length; i++) {
-					answerMapHeadVariables.put(relevantGlobalVariables.get(i), terms[i]);
+				List<Term> terms = answersBody.next().getTerms();
+				for (int i = 0; i < terms.size(); i++) {
+					answerMapHeadVariables.put(relevantGlobalVariables.get(i), terms.get(i));
 				}
 
 				// helper integer for body (get and write)
-				long[] termIds = getTermIds(bodyLiteral, answerMapHeadVariables);
 				int bodyHelpInteger = getAndWriteBodyHelpInteger(rule, bodyLiteral, answerMapHeadVariables);
 
 				Map<Integer, List<Integer>> choiceSetMap = new HashMap<>();
@@ -288,7 +271,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 						for (Integer literalInteger : literalIntegers) {
 							if (conditionInteger > 0) {
 								// literal counts integer :- literal integer, condition integer
-								int countLiteralInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, new long[]{literalInteger}, 5);
+								int countLiteralInteger = getAspifValue();
 
 								writer.write("1 0 1 "  // rule statement for a disjunctive rule with a single head literal
 									+ countLiteralInteger
@@ -309,12 +292,12 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				if (rule.hasLowerBound() || rule.hasUpperBound()) {
 					long lowerBoundInteger = 0;
 					long upperBoundInteger = 0;
-					long boundInteger = 0;
+					long boundInteger;
 
 
 					// get integer to check if enough elements has been chosen, if there is a lower bound
 					if (rule.hasLowerBound()) {
-						lowerBoundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 1);
+						lowerBoundInteger = getAspifValue();
 						writer.write("1 0 1 " + lowerBoundInteger // rule statement for a disjunctive rule with a single head literal
 							+ " 1 " + rule.getLowerBound() + " " + chosenLiteralSet.size() + " " // weighted body
 							+ StringUtils.join(chosenLiteralSet, " 1 ") + " 1" // elements with weight 1
@@ -324,7 +307,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 
 					// get integer to check if too many elements has been chosen, if there is an upper bound
 					if (rule.hasUpperBound()) {
-						upperBoundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 2);
+						upperBoundInteger = getAspifValue();
 						writer.write("1 0 1 " + upperBoundInteger // rule statement for a disjunctive rule with a single head literal
 							+ " 1 " + (rule.getUpperBound() + 1) + " " + chosenLiteralSet.size() + " " // weighted body
 							+ StringUtils.join(chosenLiteralSet, " 1 ") + " 1" // elements with weight 1
@@ -334,7 +317,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 
 					// get the right integer corresponding if the bounds are satisfied
 					if (rule.hasLowerBound() && rule.hasUpperBound()) {
-						boundInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 3);
+						boundInteger = getAspifValue();
 						writer.write("1 0 1 " + boundInteger // rule statement for a disjunctive rule with a single head literal
 							+ " 0 2 " + lowerBoundInteger + " -" + upperBoundInteger // normal body with the two bounds
 						);
@@ -399,33 +382,32 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 * @return an integer representing the rule body
 	 * @throws IOException due to writing to file
 	 */
-	private int getAndWriteBodyHelpInteger(ChoiceRule rule, PositiveLiteral bodyLiteral, Map<Variable, Long> answerMapHeadVariables) throws IOException {
+	private int getAndWriteBodyHelpInteger(ChoiceRule rule, PositiveLiteral bodyLiteral, Map<Variable, Term> answerMapHeadVariables) throws IOException {
 		int approximatedLiteralCount = rule.getBody().getRelevantLiteralCount(approximatedPredicates);
 		if (approximatedLiteralCount == 0) {
-			return 0;
+			return TOP_CONSTANT;
 		} else if (approximatedLiteralCount == 1 && rule.getBodyOnlyGlobalVariables().count() == 0) {
 			Literal literal = rule.getBody().getLiterals().stream().filter(literal1 -> approximatedPredicates.contains(literal1.getPredicate())).findFirst().orElse(bodyLiteral);
-			long[] termIds = getTermIds(literal, answerMapHeadVariables);
-			return getAspifValue(getPredicateIndex(literal.getPredicate()), literal.isNegated(), termIds);
+			String aspifIdentifier = getAspifIdentifier(literal, answerMapHeadVariables);
+			return getAspifValue(aspifIdentifier, literal.isNegated());
 		} else {
-			long[] termIds = getTermIds(bodyLiteral, answerMapHeadVariables);
-			int bodyHelpInteger = getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, termIds, 4);
+			int bodyHelpInteger = getAspifValue();
 
 			List<Term> partiallyGroundedVariables = rule.getGlobalVariables()
-				.map(variable -> getTermFromPartialAnswer(variable, answerMapHeadVariables))
+				.map(variable -> answerMapHeadVariables.getOrDefault(variable, variable))
 				.collect(Collectors.toList());
-			Map<Variable, Long> answerMapBodyVariables = new HashMap<>(answerMapHeadVariables);
+			Map<Variable, Term> answerMapBodyVariables = new HashMap<>(answerMapHeadVariables);
 			PositiveLiteral bodyAllLiteral = rule.getHelperLiteral("bodyAll", partiallyGroundedVariables, rule.getRuleIdx());
 
-			try (final karmaresearch.vlog.QueryResultIterator answersBodyAll = reasoner.answerQueryInNativeFormat(bodyAllLiteral, true)) {
+			try (final QueryResultIterator answersBodyAll = reasoner.answerQuery(bodyAllLiteral, true)) {
 
 				while (answersBodyAll.hasNext()) {
 					// build the map that represents the completely (locally and globally) ground rule
-					long[] allTermsId = answersBodyAll.next();
+					List<Term> allTerms = answersBodyAll.next().getTerms();
 					for (int i = 0; i < partiallyGroundedVariables.size(); i++) {
 						Term globalTerm = partiallyGroundedVariables.get(i);
 						if (globalTerm.isVariable()) {
-							answerMapBodyVariables.put((Variable) globalTerm, allTermsId[i]);
+							answerMapBodyVariables.put((Variable) globalTerm, allTerms.get(i));
 						}
 					}
 
@@ -493,14 +475,13 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 * @param disjunctiveRule whether the rule is a disjunctive rule
 	 * @throws IOException exception from writing to file
 	 */
-	private void writeRuleInstanceAspif(AspRule rule, Map<Variable, Long> answerMap, boolean disjunctiveRule) throws IOException {
+	private void writeRuleInstanceAspif(AspRule rule, Map<Variable, Term> answerMap, boolean disjunctiveRule) throws IOException {
 		writer.write("1 0"); // rule statement for a disjunctive rule
 		if (disjunctiveRule) {
 			writer.write(" " + rule.getHeadLiterals().getLiterals().size()); // #headLiterals
 			for (Literal literal : rule.getHeadLiterals().getLiterals()) {
-				long predicateId = getPredicateIndex(literal.getPredicate());
-				long[] termIds = getTermIds(literal, answerMap);
-				writer.write(" " + getAspifValue(predicateId, literal.isNegated(), termIds));
+				final String aspifIdentifier = getAspifIdentifier(literal, answerMap);
+				writer.write(" " + getAspifValue(aspifIdentifier, literal.isNegated()));
 			}
 		} else {
 			writer.write(" 0"); // #headLiteral = 0
@@ -519,7 +500,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 * @param answerMapHeadVariables the answer map for grounding the head variables
 	 * @param idx the index of the choice element
 	 */
-	private void addChoiceElementAspifToMap(Map<Integer, List<Integer>> choiceSetMap, ChoiceElement choiceElement, ChoiceRule rule, Map<Variable, Long> answerMapHeadVariables, int idx) throws IOException {
+	private void addChoiceElementAspifToMap(Map<Integer, List<Integer>> choiceSetMap, ChoiceElement choiceElement, ChoiceRule rule, Map<Variable, Term> answerMapHeadVariables, int idx) throws IOException {
 		// Get all the variables and terms used by the body and the condition of the choice element
 		// For the variables: Replace them with the constant if they are part of the grounding of the body
 
@@ -527,44 +508,43 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 			rule.getBody().getUniversalVariables(),
 			choiceElement.getContext().getUniversalVariables()
 		).distinct().map(
-			variable -> getTermFromPartialAnswer(variable, answerMapHeadVariables)
+			variable -> answerMapHeadVariables.getOrDefault(variable, variable)
 		).collect(Collectors.toList());
 
-		Map<Variable, Long> answerMapChoiceElement = new HashMap<>(answerMapHeadVariables);
+		Map<Variable, Term> answerMapChoiceElement = new HashMap<>(answerMapHeadVariables);
 		PositiveLiteral literal = rule.getHelperLiteral(terms, rule.getRuleIdx(), idx);
-		try (final karmaresearch.vlog.QueryResultIterator answers = reasoner.answerQueryInNativeFormat(literal, true)) {
-			long predicateId = getPredicateIndex(choiceElement.getLiteral().getPredicate());
+		try (final QueryResultIterator answers = reasoner.answerQuery(literal, true)) {
 
 			while (answers.hasNext()) {
 				// build the map that represents the completely (locally and globally) ground rule
-				long[] localTerms = answers.next();
+				List<Term> localTerms = answers.next().getTerms();
 				for (int i = 0; i < terms.size(); i++) {
 					Term term = terms.get(i);
 					if (term instanceof Variable) {
-						answerMapChoiceElement.put((Variable) term, localTerms[i]);
+						answerMapChoiceElement.put((Variable) term, localTerms.get(i));
 					}
 				}
 
 				// get the integer for the literal of the choice element
-				long[] termIds = getTermIds(choiceElement.getLiteral(), answerMapChoiceElement);
-				int literalInteger = getAspifValue(predicateId, false, termIds);
+				String aspifIdentifier = getAspifIdentifier(choiceElement.getLiteral(), answerMapChoiceElement);
+				int literalInteger = getAspifValue(aspifIdentifier, false);
 
 				// get the integers for the literals of the condition of the choice element
 				// ignore not approximated literals
 				List<Integer> conditionIntegerList = choiceElement.getContext().getLiterals().stream().filter(
 					literal1 -> approximatedPredicates.contains(literal1.getPredicate())
 				).map(
-					literal1 -> getAspifValue(getPredicateIndex(literal1.getPredicate()), literal1.isNegated(), getTermIds(literal1, answerMapChoiceElement))
+					literal1 -> getAspifValue(getAspifIdentifier(literal1, answerMapChoiceElement), literal1.isNegated())
 				).collect(Collectors.toList());
 				// an empty list has to be handled differently
 				int conditionInteger = conditionIntegerList.isEmpty()
-					? 0
-					: getAspifValue(numberOfPredicates - 1 + rule.getRuleIdx(), false, getTermIds(conditionIntegerList), 0);
+					? TOP_CONSTANT
+					: getAspifValue();
 
 				if (choiceSetMap.containsKey(conditionInteger)) {
 					choiceSetMap.get(conditionInteger).add(literalInteger);
 				} else {
-					if (conditionInteger != 0) {
+					if (conditionInteger != TOP_CONSTANT) {
 						writer.write("1 0 1 " + conditionInteger); // rule statement for a disjunctive rule with a single literal
 						writeNormalBodyAspif(choiceElement.getContext(), answerMapChoiceElement);
 					}
@@ -582,11 +562,11 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 * @param answerMap the map representing the body instance
 	 * @throws IOException possible exception due to writing to file
 	 */
-	private void writeNormalBodyAspif(Conjunction<Literal> body, Map<Variable, Long> answerMap) throws IOException {
-		writer.write(" 0"); // normal body
-		writer.write(" " + body.getRelevantLiteralCount(approximatedPredicates));
+	private void writeNormalBodyAspif(Conjunction<Literal> body, Map<Variable, Term> answerMap) throws IOException {
+		writer.write(" 0 " // normal body
+			+ body.getRelevantLiteralCount(approximatedPredicates));
 		writeConjunctionAspif(body, answerMap);
-		writer.write("\n");
+		writer.newLine();
 	}
 
 	/**
@@ -596,12 +576,11 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 * @param answerMap a map representing the instance of the conjunction
 	 * @throws IOException an exception due to writing to a file
 	 */
-	private void writeConjunctionAspif(Conjunction<Literal> conjunction, Map<Variable, Long> answerMap) throws IOException {
+	private void writeConjunctionAspif(Conjunction<Literal> conjunction, Map<Variable, Term> answerMap) throws IOException {
 		for (Literal literal : conjunction.getLiterals()) {
 			if (approximatedPredicates.contains(literal.getPredicate())) {
-				long predicateId = getPredicateIndex(literal.getPredicate());
-				long[] termIds = getTermIds(literal, answerMap);
-				writer.write(" " +  getAspifValue(predicateId, literal.isNegated(), termIds));
+				final String aspifIdentifier = getAspifIdentifier(literal, answerMap);
+				writer.write(" " +  getAspifValue(aspifIdentifier, literal.isNegated()));
 			}
 		}
 	}
@@ -613,11 +592,10 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 */
 	public void writeFactAspif(Fact fact) {
 		if (approximatedPredicates.contains(fact.getPredicate())) {
-			long predicateId = getPredicateIndex(fact.getPredicate());
-			long[] termIds = getTermIds(fact);
-			String aspifFact = "1 0 1 " + getAspifValue(predicateId, false, termIds) + " 0 0\n";
+			final String aspifIdentifier = getAspifIdentifier(fact, fact.getArguments());
 			try {
-				writer.write(aspifFact);
+				writer.write("1 0 1 " + getAspifValue(aspifIdentifier, false) + " 0 0");
+				writer.newLine();
 			} catch (IOException e) {
 				System.out.println("An error occurred.");
 				e.printStackTrace();
@@ -628,19 +606,15 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	/**
 	 * Write the instance of a show statement.
 	 *
-	 * @param predicate the predicate
-	 * @param predicateId the predicate id
-	 * @param termIds the term ids
-	 * @throws IOException an IOException
-	 * @throws NotStartedException a VLog exception
+	 * @param literal the literal to show
+	 * @param terms the terms for the literal
+	 * @throws IOException due to writing to file
 	 */
-	public void writeShowStatementAspif(Predicate predicate, long predicateId, long[] termIds) throws IOException, NotStartedException {
-		writer.write("4 "); // show statement
-
+	public void writeShowStatementAspif(PositiveLiteral literal, List<Term> terms) throws IOException {
 		StringBuilder symbolicRepresentation = new StringBuilder();
-		symbolicRepresentation.append(predicate.getName());
+		symbolicRepresentation.append(literal.getPredicate().getName());
 		boolean firstConstant = true;
-		for (long termId : termIds) {
+		for (Term term : terms) {
 			if (firstConstant) {
 				symbolicRepresentation.append("(");
 				firstConstant = false;
@@ -648,15 +622,16 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				symbolicRepresentation.append(",");
 			}
 
-			symbolicRepresentation.append(reasoner.getConstant(termId));
+			symbolicRepresentation.append(term.getName());
 		}
 		symbolicRepresentation.append(")");
 
-		writer.write(symbolicRepresentation.length() + " ");
-		writer.write(symbolicRepresentation.toString());
+		writer.write("4 " // show statement
+			+ symbolicRepresentation.length() + " "
+			+ symbolicRepresentation.toString());
 
-		if (approximatedPredicates.contains(predicate)) {
-			writer.write(" 1 " + getAspifValue(predicateId, false, termIds));
+		if (approximatedPredicates.contains(literal.getPredicate())) {
+			writer.write(" 1 " + getAspifValue(getAspifIdentifier(literal, terms), false));
 		} else {
 			writer.write(" 0");
 		}
@@ -664,137 +639,100 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		writer.newLine();
 	}
 
+//	/**
+//	 * Get the integer that represents a ground literal.
+//	 *
+//	 * @param predicateId the predicate id
+//	 * @param negated whether the literal is negated
+//	 * @param termIds array of term ids
+//	 * @param context context in which the literal is used
+//	 * @return the aspif integer
+//	 */
+//	private int getAspifValue(long predicateId, boolean negated, long[] termIds, long... context) {
+//		long aspifLongIdentifier = 0;
+//		long base = 1 + Math.max(numberOfConstants, numberOfRules);
+//		for (long id : context) {
+//			aspifLongIdentifier = aspifLongIdentifier * base + id + 1;
+//		}
+//		for (long id : termIds) {
+//			aspifLongIdentifier = aspifLongIdentifier * base + id + 1;
+//		}
+//		aspifLongIdentifier = aspifLongIdentifier * (numberOfPredicates + numberOfRules) + predicateId;
+////		StringBuilder aspifLongIdentifier = new StringBuilder();
+////		aspifLongIdentifier.append(predicateId);
+////		for (long id : context) {
+////			aspifLongIdentifier.append(":").append(id);
+////		}
+////		for (long id : termIds) {
+////			aspifLongIdentifier.append(",").append(id);
+////		}
+//
+//		int aspifValue;
+//		if (this.aspifMap.containsKey(aspifLongIdentifier)) {
+//			aspifValue = aspifMap.get(aspifLongIdentifier);
+//		} else {
+//			aspifValue = this.aspifCounter++;
+//			this.aspifMap.put(aspifLongIdentifier, aspifValue);
+//		}
+//		return negated ? -aspifValue : aspifValue;
+//	}
+
+	/**
+	 * Returns a String that identifies the literal grounded with the answer map
+	 * @param literal the literal
+	 * @param answerMap the map containing the answer mapping
+	 *
+	 * @return the string identifier
+	 */
+	private String getAspifIdentifier(Literal literal, Map<Variable, Term> answerMap) {
+		StringBuilder builder = new StringBuilder();
+		builder.append(literal.getPredicate().getName());
+		for (Term term : literal.getArguments()) {
+			Term groundedTerm = answerMap.getOrDefault(term, term);
+			builder.append("_").append(groundedTerm.getName());
+		}
+		return builder.toString();
+	}
+
+	/**
+	 * Returns a String that identifies the literal grounded with the answer map
+	 * @param literal the literal
+	 * @param answerTerms list of terms
+	 *
+	 * @return the string identifier
+	 */
+	private String getAspifIdentifier(Literal literal, List<Term> answerTerms) {
+		StringBuilder builder = new StringBuilder();
+		builder.append(literal.getPredicate().getName());
+		for (Term term : answerTerms) {
+			builder.append("_").append(term.getName());
+		}
+		return builder.toString();
+	}
+
 	/**
 	 * Get the integer that represents a ground literal.
 	 *
-	 * @param predicateId the predicate id
+	 * @param aspifIdentifier the string identifier for the literal
 	 * @param negated whether the literal is negated
-	 * @param termIds array of term ids
-	 * @param context context in which the literal is used
 	 * @return the aspif integer
 	 */
-	private int getAspifValue(long predicateId, boolean negated, long[] termIds, long... context) {
-		long aspifLongIdentifier = 0;
-		long base = 1 + Math.max(numberOfConstants, numberOfRules);
-		for (long id : context) {
-			aspifLongIdentifier = aspifLongIdentifier * base + id + 1;
-		}
-		for (long id : termIds) {
-			aspifLongIdentifier = aspifLongIdentifier * base + id + 1;
-		}
-		aspifLongIdentifier = aspifLongIdentifier * (numberOfPredicates + numberOfRules) + predicateId;
-//		StringBuilder aspifLongIdentifier = new StringBuilder();
-//		aspifLongIdentifier.append(predicateId);
-//		for (long id : context) {
-//			aspifLongIdentifier.append(":").append(id);
-//		}
-//		for (long id : termIds) {
-//			aspifLongIdentifier.append(",").append(id);
-//		}
-
-		int aspifValue;
-		if (this.aspifMap.containsKey(aspifLongIdentifier)) {
-			aspifValue = aspifMap.get(aspifLongIdentifier);
-		} else {
+	private int getAspifValue(String aspifIdentifier, boolean negated) {
+		int aspifValue = aspifMap.getOrDefault(aspifIdentifier, 0);
+		if (aspifValue == 0) {
 			aspifValue = this.aspifCounter++;
-			this.aspifMap.put(aspifLongIdentifier, aspifValue);
+			this.aspifMap.put(aspifIdentifier, aspifValue);
 		}
+
 		return negated ? -aspifValue : aspifValue;
 	}
 
 	/**
-	 * Get the predicate index in the list of approximated predicates.
+	 * Get a one-time only aspif integer
 	 *
-	 * @param predicate the predicate
-	 * @return the index
+	 * @return an aspif integer
 	 */
-	private long getPredicateIndex(Predicate predicate) {
-		return this.approximatedPredicatesList.indexOf(predicate);
-	}
-
-	/**
-	 * Get the term ids for a literal and a grounding.
-	 *
-	 * @param literal the literal
-	 * @param answerMap the map representing the grounding
-	 * @return the term ids
-	 */
-	private long[] getTermIds(Literal literal, Map<Variable, Long> answerMap) {
-		long[] termIds = new long[literal.getPredicate().getArity()];
-		int idx = 0;
-		for (Term term : literal.getArguments()) {
-			if (term.isVariable()) {
-				termIds[idx] = answerMap.get(term);
-			} else {
-				try {
-					termIds[idx] = this.reasoner.getConstantId(term.getName());
-				} catch (NotStartedException e) {
-					System.out.println(e.getMessage());
-				}
-			}
-			idx++;
-		}
-		return termIds;
-	}
-
-	/**
-	 * Get the term ids for a fact.
-	 *
-	 * @param fact the fact
-	 * @return the term ids
-	 */
-	private long[] getTermIds(Fact fact) {
-		long[] termIds = new long[fact.getPredicate().getArity()];
-		int idx = 0;
-		for (Term term : fact.getArguments()) {
-			if (term.isConstant()) {
-				// Facts should not contain variables
-				try {
-					termIds[idx] = this.reasoner.getConstantId(term.getName());
-				} catch (NotStartedException e) {
-					System.out.println(e.getMessage());
-				}
-			}
-			idx++;
-		}
-		return termIds;
-	}
-
-	private long[] getTermIds(List<Integer> integerList) {
-		long[] termIds = new long[integerList.size()];
-		for (int i=0; i < integerList.size(); i++) {
-			termIds[i] = integerList.get(i);
-		}
-		return termIds;
-	}
-
-	/**
-	 * Returns for a variable the corresponding term with respect to a partial answer. If no term is found, the
-	 * variable is kept.
-	 *
-	 * @param variable the variable
-	 * @param answerMap the partial answer
-	 * @return the variable or the term to which the variable is mapped
-	 */
-	private Term getTermFromPartialAnswer(Variable variable, Map<Variable, Long> answerMap) {
-		Long termId;
-		if ((termId = answerMap.get(variable)) != null) {
-			try {
-				karmaresearch.vlog.Term term;
-				String s = reasoner.getConstant(termId);
-				if (s == null) {
-					term = new karmaresearch.vlog.Term(TermType.BLANK, "" + (termId >> 40) + "_"
-						+ ((termId >> 32) & 0377) + "_" + (termId & 0xffffffffL));
-				} else {
-					term = new karmaresearch.vlog.Term(TermType.CONSTANT, s);
-				}
-				return reasoner.toTerm(term);
-			} catch (NotStartedException e) {
-				// Should not happen, we just did a query ...
-				return variable;
-			}
-		} else {
-			return variable;
-		}
+	private int getAspifValue() {
+		return aspifCounter++;
 	}
 }
