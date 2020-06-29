@@ -110,6 +110,9 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	@Override
 	public Boolean visit(ChoiceRule rule) {
 		try {
+			List<Term> globalVariables = rule.getGlobalVariables().collect(Collectors.toList());
+			this.headMapping = getHeadVariableMapping(rule);
+			this.bodyMapping = getBodyVariableMapping(rule.getBody(), rule.getHelperLiteral("bodyAll", globalVariables, rule.getRuleIdx()));
 			this.groundRule(rule);
 			return true;
 		} catch (IOException e) {
@@ -225,25 +228,21 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		List<UniversalVariable> relevantGlobalVariables = rule.getRelevantGlobalVariables().collect(Collectors.toList());
 		PositiveLiteral bodyLiteral = rule.getHelperLiteral("body", new ArrayList<>(relevantGlobalVariables), rule.getRuleIdx());
 
-		Map<Variable, Term> answerMapHeadVariables = new HashMap<>();
 		int counter = 0;
 		try (final QueryResultIterator answersBody = reasoner.answerQuery(bodyLiteral, true)) {
 			// each query result represents a grounding (= grounding of the global variables)
 
 			while (answersBody.hasNext()) {
 				counter++;
-				List<Term> terms = answersBody.next().getTerms();
-				for (int i = 0; i < terms.size(); i++) {
-					answerMapHeadVariables.put(relevantGlobalVariables.get(i), terms.get(i));
-				}
+				List<Term> globalTerms = answersBody.next().getTerms();
 
 				// helper integer for body (get and write)
-				int bodyHelpInteger = getAndWriteBodyHelpInteger(rule, bodyLiteral, answerMapHeadVariables);
+				int bodyHelpInteger = getAndWriteBodyHelpInteger(rule, bodyLiteral, globalTerms);
 
 				Map<Integer, List<Integer>> choiceSetMap = new HashMap<>();
 				int idx = 0;
 				for (ChoiceElement choiceElement : rule.getChoiceElements()) {
-					addChoiceElementAspifToMap(choiceSetMap, choiceElement, rule, answerMapHeadVariables, idx);
+					addChoiceElementAspifToMap(choiceSetMap, choiceElement, rule, globalTerms, idx);
 					idx++;
 				}
 
@@ -384,21 +383,20 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 * @return an integer representing the rule body
 	 * @throws IOException due to writing to file
 	 */
-	private int getAndWriteBodyHelpInteger(ChoiceRule rule, PositiveLiteral bodyLiteral, Map<Variable, Term> answerMapHeadVariables) throws IOException {
+	private int getAndWriteBodyHelpInteger(ChoiceRule rule, PositiveLiteral bodyLiteral, List<Term> globalAnswerTerms) throws IOException {
 		int approximatedLiteralCount = rule.getBody().getRelevantLiteralCount(approximatedPredicates);
 		if (approximatedLiteralCount == 0) {
 			return TOP_CONSTANT;
 		} else if (approximatedLiteralCount == 1 && rule.getBodyOnlyGlobalVariables().count() == 0) {
 			Literal literal = rule.getBody().getLiterals().stream().filter(literal1 -> approximatedPredicates.contains(literal1.getPredicate())).findFirst().orElse(bodyLiteral);
-			String aspifIdentifier = getAspifIdentifier(literal, answerMapHeadVariables);
+			int index = rule.getBody().getLiterals().indexOf(literal);
+			String aspifIdentifier = getAspifIdentifier(literal, globalAnswerTerms, bodyMapping[index][0]);
 			return getAspifValue(aspifIdentifier, literal.isNegated());
 		} else {
 			int bodyHelpInteger = getAspifValue();
 
-			List<Term> partiallyGroundedVariables = rule.getGlobalVariables()
-				.map(variable -> answerMapHeadVariables.getOrDefault(variable, variable))
-				.collect(Collectors.toList());
-			Map<Variable, Term> answerMapBodyVariables = new HashMap<>(answerMapHeadVariables);
+			List<Term> partiallyGroundedVariables = partiallyGroundedVariables = new ArrayList<>(globalAnswerTerms);
+			partiallyGroundedVariables.addAll(rule.getBodyOnlyGlobalVariables().collect(Collectors.toList()));
 			PositiveLiteral bodyAllLiteral = rule.getHelperLiteral("bodyAll", partiallyGroundedVariables, rule.getRuleIdx());
 
 			try (final QueryResultIterator answersBodyAll = reasoner.answerQuery(bodyAllLiteral, true)) {
@@ -406,17 +404,11 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				while (answersBodyAll.hasNext()) {
 					// build the map that represents the completely (locally and globally) ground rule
 					List<Term> allTerms = answersBodyAll.next().getTerms();
-					for (int i = 0; i < partiallyGroundedVariables.size(); i++) {
-						Term globalTerm = partiallyGroundedVariables.get(i);
-						if (globalTerm.isVariable()) {
-							answerMapBodyVariables.put((Variable) globalTerm, allTerms.get(i));
-						}
-					}
 
 					writer.write("1 0 1 " + // rule statement for disjunctive rule with single head literal
 						bodyHelpInteger // for the body help integer
 					);
-					writeNormalBodyAspif(rule.getBody(), answerMapBodyVariables);
+					writeNormalBodyAspif(rule.getBody(), allTerms);
 				}
 			}
 
@@ -444,6 +436,45 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		for (PositiveLiteral literal : literals) {
 			headMapping[i] = new int[1][];
 			headMapping[i][0] = getLiteralVariableMapping(literal, helperLiteral);
+		}
+		return headMapping;
+	}
+
+	/**
+	 * Return a three-dimensional integer array that tells for each choice element of the rule head and for each
+	 * literal of such a choice element at which position the corresponding term for a grounding of the literal,
+	 * which can be computed by evaluating the helper literal, is.
+	 * Remarks: If the term is not present in the helper literal, e.g. because it is a constant, a -1 is added to the
+	 * integer array.
+	 *
+	 * @param rule
+	 *
+	 * @return
+	 */
+	private int[][][] getHeadVariableMapping(ChoiceRule rule) {
+		List<ChoiceElement> choiceElements = rule.getChoiceElements();
+		int[][][] headMapping = new int[choiceElements.size()][][];
+		int counterChoiceElements = 0;
+		for (ChoiceElement choiceElement : choiceElements) {
+			List<Literal> literals = new ArrayList<>();
+			literals.add(choiceElement.getLiteral());
+			literals.addAll(choiceElement.getContext().getLiterals());
+
+			List<Term> choiceElementVariables = Stream.concat(
+				rule.getRelevantGlobalVariables(),
+				choiceElement.getContext().getUniversalVariables()
+			).distinct().collect(Collectors.toList());
+			PositiveLiteral helperLiteral = rule.getHelperLiteral(choiceElementVariables, rule.getRuleIdx(), counterChoiceElements);
+
+			headMapping[counterChoiceElements] = new int[literals.size()][];
+
+			int counterLiterals = 0;
+			for (Literal literal : literals) {
+				headMapping[counterChoiceElements][counterLiterals] = getLiteralVariableMapping(literal, helperLiteral);
+				counterLiterals++;
+			}
+
+			counterChoiceElements++;
 		}
 		return headMapping;
 	}
@@ -588,42 +619,36 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	 * @param answerMapHeadVariables the answer map for grounding the head variables
 	 * @param idx the index of the choice element
 	 */
-	private void addChoiceElementAspifToMap(Map<Integer, List<Integer>> choiceSetMap, ChoiceElement choiceElement, ChoiceRule rule, Map<Variable, Term> answerMapHeadVariables, int idx) throws IOException {
+	private void addChoiceElementAspifToMap(Map<Integer, List<Integer>> choiceSetMap, ChoiceElement choiceElement, ChoiceRule rule, List<Term> globalAnswerTerms, int idx) throws IOException {
 		// Get all the variables and terms used by the body and the condition of the choice element
 		// For the variables: Replace them with the constant if they are part of the grounding of the body
 
-		List<Term> terms = Stream.concat(
-			rule.getBody().getUniversalVariables(),
-			choiceElement.getContext().getUniversalVariables()
-		).distinct().map(
-			variable -> answerMapHeadVariables.getOrDefault(variable, variable)
-		).collect(Collectors.toList());
+		List<UniversalVariable> globalVariables = rule.getGlobalVariables().collect(Collectors.toList());
+		List<Term> partiallyGroundedVariables = new ArrayList<>(globalAnswerTerms);
+		partiallyGroundedVariables.addAll(choiceElement.getContext().getUniversalVariables().filter(var -> !globalVariables.contains(var)).collect(Collectors.toList()));
 
-		Map<Variable, Term> answerMapChoiceElement = new HashMap<>(answerMapHeadVariables);
-		PositiveLiteral literal = rule.getHelperLiteral(terms, rule.getRuleIdx(), idx);
+		PositiveLiteral literal = rule.getHelperLiteral(partiallyGroundedVariables, rule.getRuleIdx(), idx);
 		try (final QueryResultIterator answers = reasoner.answerQuery(literal, true)) {
 
 			while (answers.hasNext()) {
 				// build the map that represents the completely (locally and globally) ground rule
-				List<Term> localTerms = answers.next().getTerms();
-				for (int i = 0; i < terms.size(); i++) {
-					Term term = terms.get(i);
-					if (term instanceof Variable) {
-						answerMapChoiceElement.put((Variable) term, localTerms.get(i));
-					}
-				}
+				List<Term> answerTerms = answers.next().getTerms();
 
 				// get the integer for the literal of the choice element
-				String aspifIdentifier = getAspifIdentifier(choiceElement.getLiteral(), answerMapChoiceElement);
+				String aspifIdentifier = getAspifIdentifier(choiceElement.getLiteral(), answerTerms, headMapping[idx][0]);
 				int literalInteger = getAspifValue(aspifIdentifier, false);
 
-				// get the integers for the literals of the condition of the choice element
-				// ignore not approximated literals
-				List<Integer> conditionIntegerList = choiceElement.getContext().getLiterals().stream().filter(
-					literal1 -> approximatedPredicates.contains(literal1.getPredicate())
-				).map(
-					literal1 -> getAspifValue(getAspifIdentifier(literal1, answerMapChoiceElement), literal1.isNegated())
-				).collect(Collectors.toList());
+				List<Integer> conditionIntegerList = new ArrayList<>();
+				int countLiteral = 0;
+				for (Literal conditionLiteral : choiceElement.getContext().getLiterals()) {
+					if (approximatedPredicates.contains(conditionLiteral.getPredicate())) {
+						String aspifIdentifierConditionLiteral = getAspifIdentifier(conditionLiteral, answerTerms, headMapping[idx][countLiteral+1]);
+						conditionIntegerList.add(getAspifValue(aspifIdentifierConditionLiteral, conditionLiteral.isNegated()));
+					}
+
+					countLiteral++;
+				}
+
 				// an empty list has to be handled differently
 				int conditionInteger = conditionIntegerList.isEmpty()
 					? TOP_CONSTANT
@@ -634,7 +659,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				} else {
 					if (conditionInteger != TOP_CONSTANT) {
 						writer.write("1 0 1 " + conditionInteger); // rule statement for a disjunctive rule with a single literal
-						writeNormalBodyAspif(choiceElement.getContext(), answerMapChoiceElement);
+						writeConditionAspif(choiceElement.getContext(), answerTerms, idx);
 					}
 					choiceSetMap.put(conditionInteger, new ArrayList<>(Collections.singletonList(literalInteger)));
 				}
@@ -672,6 +697,27 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		for (Literal literal : body.getLiterals()) {
 			if (approximatedPredicates.contains(literal.getPredicate())) {
 				int[] mapping = bodyMapping[i][0];
+				final String aspifIdentifier = getAspifIdentifier(literal, answerTerms, mapping);
+				builder.append(" ").append(getAspifValue(aspifIdentifier, literal.isNegated()));
+				counter++;
+			}
+			i++;
+		}
+
+		writer.write(" 0 " // normal body
+			+ counter
+			+ builder.toString());
+		writer.newLine();
+	}
+
+	private void writeConditionAspif(Conjunction<Literal> body, List<Term> answerTerms, int choiceElementIndex) throws IOException {
+		StringBuilder builder = new StringBuilder();
+		int counter = 0;
+		int i = 0;
+
+		for (Literal literal : body.getLiterals()) {
+			if (approximatedPredicates.contains(literal.getPredicate())) {
+				int[] mapping = headMapping[choiceElementIndex][i+1];
 				final String aspifIdentifier = getAspifIdentifier(literal, answerTerms, mapping);
 				builder.append(" ").append(getAspifValue(aspifIdentifier, literal.isNegated()));
 				counter++;
