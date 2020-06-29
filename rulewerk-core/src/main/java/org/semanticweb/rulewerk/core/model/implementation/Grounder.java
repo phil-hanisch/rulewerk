@@ -51,6 +51,8 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	final private boolean textFormat;
 	final private Object2IntMap<String> aspifMap;
 	private int aspifCounter;
+	private int[][][] headMapping;
+	private int[][][] bodyMapping;
 
 	/**
 	 * The constructor.
@@ -119,6 +121,8 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	@Override
 	public Boolean visit(Constraint rule) {
 		try {
+			this.headMapping = new int[0][0][0];
+			this.bodyMapping = getBodyVariableMapping(rule.getBody(), rule.getHelperLiteral());
 			this.groundRule(rule, false);
 			return true;
 		} catch (IOException e) {
@@ -130,6 +134,8 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	@Override
 	public Boolean visit(DisjunctiveRule rule) {
 		try {
+			this.headMapping = getHeadVariableMapping(rule, rule.getHelperLiteral());
+			this.bodyMapping = getBodyVariableMapping(rule.getBody(), rule.getHelperLiteral());
 			this.groundRule(rule, true);
 			return true;
 		} catch (IOException e) {
@@ -173,7 +179,6 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		List<PositiveLiteral> headLiterals = rule.getHeadLiterals().getLiterals();
 		if (!(headLiterals.size() == 1 && !approximatedPredicates.contains(headLiterals.get(0).getPredicate()))) {
 			PositiveLiteral literal = rule.getHelperLiteral();
-			Map<Variable, Term> answerMap = new HashMap<>();
 			final List<Variable> variables = literal.getUniversalVariables().collect(Collectors.toList());
 
 			long startTime = System.nanoTime();
@@ -183,10 +188,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 				// each query result represents a grounding
 				while(answers.hasNext()) {
 					counter++;
-					final List<Term> terms = answers.next().getTerms();
-					for (int i = 0; i < terms.size(); i++) {
-						answerMap.put(variables.get(i), terms.get(i));
-					}
+					List<Term> answerTerms = answers.next().getTerms();
 
 	//				if (this.textFormat) {
 	//					groundedRule = rule.ground(approximatedPredicates, answerMap);
@@ -197,7 +199,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 	//						e.printStackTrace();
 	//					}
 	//				} else {
-					writeRuleInstanceAspif(rule, answerMap, disjunctiveRule);
+					writeRuleInstanceAspif(rule, answerTerms, disjunctiveRule);
 	//				}
 				}
 			}
@@ -422,6 +424,74 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		}
 	}
 
+	/**
+	 * Return a three-dimensional integer array that tells for each conditional literal of the rule head and for each
+	 * literal of such an conditional literal at which position the corresponding term for a grounding of the literal,
+	 * which can be computed by evaluating the helper literal, is.
+	 * Remarks: If the term is not present in the helper literal, e.g. because it is a constant, a -1 is added to the
+	 * integer array. As disjunctive rules do not (yet) support conditional literals the "normal" literals are regarded
+	 * as conditional literals with an empty condition.
+	 *
+	 * @param rule
+	 * @param helperLiteral
+	 *
+	 * @return
+	 */
+	private int[][][] getHeadVariableMapping(DisjunctiveRule rule, PositiveLiteral helperLiteral) {
+		List<PositiveLiteral> literals = rule.getHeadLiterals().getLiterals();
+		int[][][] headMapping = new int[literals.size()][][];
+		int i = 0;
+		for (PositiveLiteral literal : literals) {
+			headMapping[i] = new int[1][];
+			headMapping[i][0] = getLiteralVariableMapping(literal, helperLiteral);
+		}
+		return headMapping;
+	}
+
+	/**
+	 * Return a three-dimensional integer array that tells for each conditional literal of the rule body and for each
+	 * literal of such an conditional literal at which position the corresponding term for a grounding of the literal,
+	 * which can be computed by evaluating the helper literal, is.
+	 * Remarks: If the term is not present in the helper literal, e.g. because it is a constant, a -1 is added to the
+	 * integer array. As rule bodies do not (yet) support conditional literals the "normal" literals are regarded
+	 * as conditional literals with an empty condition.
+	 *
+	 * @param rule
+	 * @param helperLiteral
+	 *
+	 * @return
+	 */
+	private int[][][] getBodyVariableMapping(Conjunction<Literal> body, PositiveLiteral helperLiteral) {
+		List<Literal> literals = body.getLiterals();
+		int[][][] bodyMapping = new int[literals.size()][][];
+		int i = 0;
+		for (Literal literal : literals) {
+			bodyMapping[i] = new int[1][];
+			bodyMapping[i][0] = getLiteralVariableMapping(literal, helperLiteral);
+			i++;
+		}
+		return bodyMapping;
+	}
+
+	/**
+	 * Return an integer array that tells for each term of the given literal at which position the corresponding term
+	 * for a grounding of the literal, which can be computed by evaluating the helper literal, is. If the term is not
+	 * present in the helper literal, e.g. because it is a constant, a -1 is added to the integer array.
+	 *
+	 * @param literal the literal
+	 * @param helperLiteral the helper literal
+	 * @return integer array
+	 */
+	private int[] getLiteralVariableMapping(Literal literal, PositiveLiteral helperLiteral) {
+		List<Term> terms = literal.getArguments();
+		int[] mapping = new int[terms.size()];
+		int i = 0;
+		for (Term term : terms) {
+			mapping[i++] = helperLiteral.getArguments().indexOf(term);
+		}
+		return mapping;
+	}
+
 	// ========== Text-based grounding part ==========
 
 	/**
@@ -488,6 +558,24 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		}
 
 		writeNormalBodyAspif(rule.getBody(), answerMap);
+	}
+
+	private void writeRuleInstanceAspif(AspRule rule, List<Term> answerTerms, boolean disjunctiveRule) throws IOException {
+		writer.write("1 0"); // rule statement for a disjunctive rule
+		if (disjunctiveRule) {
+			writer.write(" " + rule.getHeadLiterals().getLiterals().size()); // #headLiterals
+			int i = 0;
+			for (Literal literal : rule.getHeadLiterals().getLiterals()) {
+				int[] mapping = headMapping[i][0];
+				final String aspifIdentifier = getAspifIdentifier(literal, answerTerms, mapping);
+				writer.write(" " + getAspifValue(aspifIdentifier, literal.isNegated()));
+				i++;
+			}
+		} else {
+			writer.write(" 0"); // #headLiteral = 0
+		}
+
+		writeNormalBodyAspif(rule.getBody(), answerTerms);
 	}
 
 	/**
@@ -566,6 +654,34 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		writer.write(" 0 " // normal body
 			+ body.getRelevantLiteralCount(approximatedPredicates));
 		writeConjunctionAspif(body, answerMap);
+		writer.newLine();
+	}
+
+	/**
+	 * Write the body instance given by the answer
+	 *
+	 * @param body a conjunction of literals
+	 * @param answerTerms list of terms representing the grounding
+	 * @throws IOException
+	 */
+	private void writeNormalBodyAspif(Conjunction<Literal> body, List<Term> answerTerms) throws IOException {
+		StringBuilder builder = new StringBuilder();
+		int counter = 0;
+		int i = 0;
+
+		for (Literal literal : body.getLiterals()) {
+			if (approximatedPredicates.contains(literal.getPredicate())) {
+				int[] mapping = bodyMapping[i][0];
+				final String aspifIdentifier = getAspifIdentifier(literal, answerTerms, mapping);
+				builder.append(" ").append(getAspifValue(aspifIdentifier, literal.isNegated()));
+				counter++;
+			}
+			i++;
+		}
+
+		writer.write(" 0 " // normal body
+			+ counter
+			+ builder.toString());
 		writer.newLine();
 	}
 
@@ -706,6 +822,20 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		builder.append(literal.getPredicate().getName());
 		for (Term term : answerTerms) {
 			builder.append("_").append(term.getName());
+		}
+		return builder.toString();
+	}
+
+	private String getAspifIdentifier(Literal literal, List<Term> answerTerms, int[] mapping) {
+		StringBuilder builder = new StringBuilder();
+		builder.append(literal.getPredicate().getName());
+		for (int i=0; i < mapping.length; i++) {
+			int index = mapping[i];
+			if (index == -1) {
+				builder.append("_").append(literal.getArguments().get(i).getName());
+			} else {
+				builder.append("_").append(answerTerms.get(index).getName());
+			}
 		}
 		return builder.toString();
 	}
