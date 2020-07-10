@@ -76,8 +76,8 @@ public class AspExample {
 			line = parser.parse(options, args);
 			programs = line.getArgs();
 			textFormat = line.hasOption("t");
-			inputPath = line.getOptionValue("P", line.hasOption("p") ? ExamplesUtils.INPUT_FOLDER : "") + "/";
-			outputPath = line.getOptionValue("P", line.hasOption("p") ? ExamplesUtils.OUTPUT_FOLDER : "") + "/";
+			inputPath = line.getOptionValue("P", line.hasOption("p") ? ExamplesUtils.INPUT_FOLDER : ".") + "/";
+			outputPath = line.getOptionValue("P", line.hasOption("p") ? ExamplesUtils.OUTPUT_FOLDER : ".") + "/";
 			String fileName = outputPath + line.getOptionValue("o");
 			outputWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName), StandardCharsets.US_ASCII));
 			//outputWriter = new BufferedWriter(new FileWriter(outputPath + line.getOptionValue("o")));
