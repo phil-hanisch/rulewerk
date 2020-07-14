@@ -408,7 +408,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 						lowerBoundInteger = AspifIdentifier.getAspifValue();
 						writer.write("1 0 1 " + lowerBoundInteger // rule statement for a disjunctive rule with a single head literal
 							+ " 1 " + rule.getLowerBound() + " " + chosenLiteralSet.size() + " " // weighted body
-							+ StringUtils.join(chosenLiteralSet, " 1 ") + " 1" // elements with weight 1
+							+ StringUtils.join(chosenLiteralSet, " 1 ") + (chosenLiteralSet.size() > 0 ? " 1" : "") // elements with weight 1
 						);
 						writer.newLine();
 					}
@@ -418,7 +418,7 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 						upperBoundInteger = AspifIdentifier.getAspifValue();
 						writer.write("1 0 1 " + upperBoundInteger // rule statement for a disjunctive rule with a single head literal
 							+ " 1 " + (rule.getUpperBound() + 1) + " " + chosenLiteralSet.size() + " " // weighted body
-							+ StringUtils.join(chosenLiteralSet, " 1 ") + " 1" // elements with weight 1
+							+ StringUtils.join(chosenLiteralSet, " 1 ") + (chosenLiteralSet.size() > 0 ? " 1" : "") // elements with weight 1
 						);
 						writer.newLine();
 					}
