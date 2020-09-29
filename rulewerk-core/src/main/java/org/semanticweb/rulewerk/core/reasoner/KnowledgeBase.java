@@ -667,13 +667,16 @@ public class KnowledgeBase implements Iterable<Statement> {
 		Map<Predicate, Set<Predicate>> directDependencyMap = new HashMap<>(); // contains direct dependencies of any kind
 		Map<Predicate, Set<Predicate>> negationDependencyMap = new HashMap<>(); // contains direct negative dependencies
 
+		// initialise dependencyMaps
+		for (Predicate predicate : this.getPredicates()) {
+			directDependencyMap.put(predicate, new HashSet<>());
+			negationDependencyMap.put(predicate, new HashSet<>());
+		}
+
 		// get the initial dependencies
 		for (AspRule rule : this.getAspRules()) {
 			for (Literal literal : rule.getHeadLiterals()) {
 				Predicate predicate = literal.getPredicate();
-
-				directDependencyMap.putIfAbsent(predicate, new HashSet<>());
-				negationDependencyMap.putIfAbsent(predicate, new HashSet<>());
 
 				if (rule.requiresApproximation()) {
 					approximatedPredicates.add(predicate);
