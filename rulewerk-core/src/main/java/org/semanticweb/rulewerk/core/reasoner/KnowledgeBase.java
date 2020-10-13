@@ -785,4 +785,14 @@ public class KnowledgeBase implements Iterable<Statement> {
 
 		return predicates;
 	}
+
+	/**
+	 * Checks if the fact is part of the knowledge base.
+	 *
+	 * @param fact a fact
+	 * @return boolean
+	 */
+	public boolean hasFact(Fact fact) {
+		return getFactsByPredicate().getOrDefault(fact.getPredicate(), Collections.emptySet()).contains(fact);
+	}
 }

@@ -768,6 +768,9 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		for (Literal literal : body.getLiterals()) {
 			if (approximatedPredicates.contains(literal.getPredicate())) {
 				int[] mapping = bodyMapping[i][0];
+				if (knowledgeBase.hasFact(groundLiteralToFact(literal, answerTerms, mapping))) {
+					continue;
+				}
 				final AspifIdentifier aspifIdentifier = new AspifIdentifier(literal, answerTerms, mapping);
 				builder.append(" ").append(AspifIdentifier.getAspifValue(aspifIdentifier, literal.isNegated()));
 				counter++;
@@ -781,6 +784,19 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		writer.newLine();
 	}
 
+	private Fact groundLiteralToFact(Literal literal, List<Term> answerTerms, int[] mapping) {
+		Term[] terms = new Term[mapping.length];
+		for (int i=0; i < mapping.length; i++) {
+			int index = mapping[i];
+			if (index == -1) {
+				terms[i] = literal.getArguments().get(i);
+			} else {
+				terms[i] = answerTerms.get(index);
+			}
+		}
+		return Expressions.makeFact(literal.getPredicate(), terms);
+	}
+
 	private void writeConditionAspif(Conjunction<Literal> body, List<Term> answerTerms, int choiceElementIndex) throws IOException {
 		StringBuilder builder = new StringBuilder();
 		int counter = 0;
@@ -789,6 +805,9 @@ public class Grounder implements AspRuleVisitor<Boolean> {
 		for (Literal literal : body.getLiterals()) {
 			if (approximatedPredicates.contains(literal.getPredicate())) {
 				int[] mapping = headMapping[choiceElementIndex][i+1];
+				if (knowledgeBase.hasFact(groundLiteralToFact(literal, answerTerms, mapping))) {
+					continue;
+				}
 				final AspifIdentifier aspifIdentifier = new AspifIdentifier(literal, answerTerms, mapping);
 				builder.append(" ").append(AspifIdentifier.getAspifValue(aspifIdentifier, literal.isNegated()));
 				counter++;
