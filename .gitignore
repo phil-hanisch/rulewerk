@@ -59,3 +59,7 @@ rulewerk-rdf/src/main/data/output/*
 # Crossword example
 rulewerk-examples/analytics
 rulewerk-examples/src/main/data/input/asp
+
+# Data created during evaluation
+evaluation/*/groundings/*
+evaluation/*/output/*
