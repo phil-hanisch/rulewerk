@@ -1,4 +1,11 @@
+from matplotlib import rc
+from matplotlib.markers import CARETLEFT, CARETRIGHT, CARETLEFTBASE, CARETRIGHTBASE
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+import time
+
+mpl.use('pgf')
+
 
 '''
 Class that represents the results for a benchmark
@@ -137,7 +144,7 @@ class Benchmark():
     @param{str} system the system to scatter for
     @param{str} task   the task to scatter for
     '''
-    def scatter(self, system, task, marker='.', label=None):
+    def scatter(self, system, task, color, marker='^', label=None, fillstyle=None):
         if label is None:
             label = system
         xs = []
@@ -145,22 +152,24 @@ class Benchmark():
         for x,y in self.filterBySystemAndTask(system,task):
             xs.append(x)
             ys.append(y)
-        self.ax.plot(xs,ys,marker,label=label)
+        self.ax.plot(xs,ys,marker=marker,label=label,color=color,fillstyle=fillstyle,linestyle='')
+        self.ax.set_ylabel('Time [s]')
 
     '''
     Sets general visual parameter and shows the plot.
     '''
-    def show(self, xlabel, xticks=None):
+    def show(self, xlabel, xticks=None, filename='figure.pgf', top=None):
         self.ax.set_ylim(bottom=0)
-        self.ax.set_xlim(left=0)
+        self.ax.set_ylim(bottom=0, top=top)
         if xticks is not None:
             self.ax.set_xticks(xticks)
 
-        self.ax.set_ylabel('Time [s]')
         self.ax.set_xlabel(xlabel)
-        self.ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1), ncol=2, fancybox=True)
+        self.ax.legend(loc='upper left', bbox_to_anchor=(0, 1), fancybox=True)
 
-        plt.show(block=self.fig)
+        plt.tight_layout()
+        # plt.show(block=self.fig)
+        plt.savefig(filename)
 
     '''
     Get the used times for a given system and task
@@ -176,7 +185,7 @@ class Benchmark():
     @param{str} system the system to create plot for
     @param{str} task   the task to create plot for
     '''
-    def scatterCactus(self, system, task, marker='.', timeBudget=6000, label=None):
+    def scatterCactus(self, system, task, color, marker='^', timeBudget=12000, label=None, useMinutes=False, fillstyle=None):
         if label == None:
             label = system
         times = self.getTime(system, task)
@@ -192,8 +201,13 @@ class Benchmark():
                 break
             xs.append(count)
             ys.append(acc)
-        # self.ax.scatter(xs,ys,label=system)
-        self.ax.plot(xs,ys,marker,label=label)
+        # self.ax.scatter(xs,ys,marker,label=label,color=color)
+        if useMinutes:
+            self.ax.set_ylabel('Time [min]')
+            ys = [secs / 60 for secs in ys]
+        else:
+            self.ax.set_ylabel('Time [s]')
+        self.ax.plot(xs,ys,marker=marker,linestyle='',label=label,color=color,fillstyle=fillstyle)
 
 
 if __name__ == '__main__':
@@ -202,56 +216,81 @@ if __name__ == '__main__':
     CW_FILE = '../crossword/results.txt'
     SM_FILE = '../stable-marriage/results.txt'
     VA_FILE = '../visit-all/results.txt'
-    
+
     # specify the input file with the data
-    filename = SM_FILE
+    filename = CW_FILE
 
-    benchmark = Benchmark(name, filename)
-    benchmark.average()
+    rc('text', usetex=True)
+    rc('font', family = 'serif', serif = 'cmr10', size=9)
+    rc('legend', fontsize=8)
+    rc('lines', markersize=5)
+    rc('text.latex', preamble=r'\usepackage{cmbright}')
 
-    # decide what to show
-    showSolve = False # grounding or solving performance
+    marker_rulewerk = CARETLEFTBASE
+    marker_rulewerk_2 = CARETRIGHTBASE
+    marker_gringo = 'o'
 
-    if filename == CW_FILE:
-    # create a scatter plot for crossword data
-        xticks=range(0,16,3)
-        xlabel='Crossword size'
-        if showSolve:
-            benchmark.scatter('clasp@rulewerk','solve-only', label='clasp@rulewerk-asp')
-            benchmark.scatter('clasp@gringo','solve-only', marker='+')
-            # benchmark.scatter('clasp@rulewerk-opt','solve-only', marker='x')
+    fillstyle_gringo = 'none'
 
-            # benchmark.scatter('clasp@shuf', 'solve-only', label='clasp@shuf')
-            # benchmark.minimum()
-            # benchmark.scatter('clasp@shuf', 'solve-only', label='clasp@shuf-min')
-            # benchmark.maximum()
-            # benchmark.scatter('clasp@shuf', 'solve-only', label='clasp@shuf-max')
+    color_gringo = 'k'
+
+    benchmarks = [(filename, showSolve) for filename in [CW_FILE, SM_FILE, VA_FILE] for showSolve in [True, False]]
+    print(benchmarks)
+    for filename, showSolve in benchmarks:
+        # time.sleep(1)
+        rc('figure', figsize=(4,2.5) if filename == CW_FILE else (3,2.5))
+        benchmark = Benchmark(name, filename)
+        benchmark.average()
+
+        class_name = 'Crossword' if filename == CW_FILE else 'Stable marriage' if filename == SM_FILE else 'Visit all'
+
+        if filename == CW_FILE:
+        # create a scatter plot for crossword data
+            xticks=range(0,16,3)
+            xlabel='Crossword size'
+
+            if showSolve:
+                benchmark.scatter('clasp@rulewerk','solve-only', 'tab:blue', marker=marker_rulewerk, label='Clasp@Rulewerk-ASP')
+                benchmark.scatter('clasp@rulewerk-fast','solve-only', 'tab:red', marker=marker_rulewerk_2, label='Clasp@Rulewerk-ASP\'')
+                benchmark.scatter('clasp@gringo','solve-only', color_gringo, marker=marker_gringo, fillstyle=fillstyle_gringo, label='Clasp@Gringo')
+                # benchmark.scatter('clasp@rulewerk-opt','solve-only', marker='x')
+
+                # benchmark.scatter('clasp@shuf', 'solve-only', label='clasp@shuf')
+                # benchmark.minimum()
+                # benchmark.scatter('clasp@shuf', 'solve-only', label='clasp@shuf-min')
+                # benchmark.maximum()
+                # benchmark.scatter('clasp@shuf', 'solve-only', label='clasp@shuf-max')
+
+            else:
+                benchmark.scatter('rulewerk','ground', 'tab:blue', marker=marker_rulewerk, label='Rulewerk-ASP')
+                benchmark.scatter('rulewerk-fast','ground', 'tab:red', marker=marker_rulewerk_2, label='Rulewerk-ASP\'')
+                benchmark.scatter('gringo','ground', color_gringo, marker=marker_gringo, fillstyle=fillstyle_gringo, label='Gringo')
 
         else:
-            benchmark.scatter('rulewerk','ground', label='Rulewerk-ASP')
-            benchmark.scatter('gringo','ground',marker='+', label='Gringo')
+        # create a cactus plot for stable-marriage and visit-all data
+            x_max = 20 if not showSolve else 10 if filename == SM_FILE else 18
+            xticks = range(0,x_max+1,2)
 
-    else:
-    # create a cactus plot for stable-marriage and visit-all data
-        xticks = range(0,21,2)
-        if showSolve:
-            benchmark.scatterCactus('clasp@rulewerk','solve-only', label='clasp@rulewerk-asp')
-            benchmark.scatterCactus('clasp@gringo','solve-only', marker='+')
-            # benchmark.scatter('clasp@rulewerk-opt','solve-only', marker='x')
+            if showSolve:
+                benchmark.scatterCactus('clasp@rulewerk','solve-only', 'tab:blue', marker=marker_rulewerk, label='Clasp@Rulewerk-ASP', useMinutes=True)
+                benchmark.scatterCactus('clasp@rulewerk-fast','solve-only', 'tab:red', marker=marker_rulewerk_2, label='Clasp@Rulewerk-ASP\'', useMinutes=True)
+                benchmark.scatterCactus('clasp@gringo','solve-only', color_gringo, marker=marker_gringo, fillstyle=fillstyle_gringo, label='Clasp@Gringo', useMinutes=True)
+                # benchmark.scatter('clasp@rulewerk-opt','solve-only', marker='x')
 
-            # benchmark.scatterCactus('clasp@shuf', 'solve-only', label='clasp@shuf', marker='3')
-            # benchmark.minimum()
-            # benchmark.scatterCactus('clasp@shuf', 'solve-only', label='clasp@shuf-min', marker='2')
-            # benchmark.maximum()
-            # benchmark.scatterCactus('clasp@shuf', 'solve-only', label='clasp@shuf-max', marker='1')
-            xlabel = 'Number of solved instances'
+                # benchmark.scatterCactus('clasp@shuf', 'solve-only', label='clasp@shuf', marker='3')
+                # benchmark.minimum()
+                # benchmark.scatterCactus('clasp@shuf', 'solve-only', label='clasp@shuf-min', marker='2')
+                # benchmark.maximum()
+                # benchmark.scatterCactus('clasp@shuf', 'solve-only', label='clasp@shuf-max', marker='1')
+                xlabel = 'Number of solved instances'
 
-        else:
-            benchmark.scatterCactus('rulewerk','ground',label='Rulewerk-ASP')
-            benchmark.scatterCactus('gringo','ground',marker='+', label='Gringo')
-            xlabel = 'Number of grounded instances'
+            else:
+                benchmark.scatterCactus('rulewerk', 'ground', 'tab:blue', marker=marker_rulewerk, label='Rulewerk-ASP')
+                benchmark.scatterCactus('rulewerk-fast','ground', 'tab:red', marker=marker_rulewerk_2, label='Rulewerk-ASP\'')
+                benchmark.scatterCactus('gringo','ground', color_gringo, marker=marker_gringo, fillstyle=fillstyle_gringo, label='Gringo')
+                xlabel = 'Number of grounded instances'
 
-    # show the plot
-    benchmark.show(xticks=xticks, xlabel=xlabel)
+        # show the plot
+        benchmark.show(xticks=xticks, xlabel=xlabel, filename='{} - {}.pgf'.format(class_name, 'solve' if showSolve else 'ground'))
 
 
