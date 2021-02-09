@@ -10,8 +10,8 @@ iterations=1
 ## test problem classes
 ## provide folder names that contain the performance test classes
 classes=()
-#classes+=crossword
-#classes+=visit-all
+# classes+=crossword
+# classes+=visit-all
 classes+=stable-marriage
 
 ## tasks [yn]
@@ -21,14 +21,14 @@ run[solve-only]=y
 run[all]=n
 
 # clean during preparations [yn]
-clean_grounding=y
-clean_output=y
+clean_grounding=n
+clean_output=n
 
 # consume instance after tests
 consume_instance=y
 
 # create rulewerk.jar
-compile=y
+compile=n
 
 
 # ----- helper functions -----
@@ -109,6 +109,14 @@ for suite in $classes; do
             # solve: clasp@rulewerk
             comm="clasp ${dir}/groundings/${encoding:r:t}-${instance:r:t}.rw-aspif"
             run-test $comm solve-only clasp@rulewerk $encoding $instance
+
+            # ground with native answer optimisation
+            comm="java -jar rulewerk-asp-fast.jar -a -i ${instance:r:t} -s rulewerk -o ${dir}/groundings/${encoding:r:t}-${instance:r:t}.rwf-aspif $encoding $instance"
+            run-test $comm ground rulewerk-fast $encoding $instance
+
+            # solve: clasp@rulewerk-fast
+            comm="clasp ${dir}/groundings/${encoding:r:t}-${instance:r:t}.rwf-aspif"
+            run-test $comm solve-only clasp@rulewerk-fast $encoding $instance
 
             # ground+solve
             # comm="java -jar rulewerk-asp.jar -i ${instance:r:t} -s rulewerk -o ${dir}/output/${encoding:r:t}-${instance:r:t}.rw-solved $encoding $instance"
